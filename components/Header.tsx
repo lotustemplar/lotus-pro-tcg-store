@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { NavCategory } from "@/lib/nav";
 import type { SiteSettings } from "@/lib/site-settings";
 import { SearchBar } from "./SearchBar";
@@ -17,6 +17,34 @@ export function Header({
   const [openSlug, setOpenSlug] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { itemCount, open } = useCart();
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const scrollY = window.scrollY;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyWidth = document.body.style.width;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.width = previousBodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [mobileOpen]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/8 bg-[#090d16]/95 backdrop-blur">
@@ -121,35 +149,47 @@ export function Header({
         </div>
 
         {mobileOpen && (
-          <div className="mt-2 rounded-2xl border border-white/8 bg-[#0b1020]/96 px-4 pb-20 pt-4 shadow-[0_20px_60px_rgba(2,6,16,0.45)] xl:hidden">
-            {categories.map((category) => (
-              <div key={category.slug} className="mb-4 last:mb-0">
-                <Link
-                  href={`/category/${category.slug}`}
-                  className={
-                    category.navStyle === "patreon"
-                      ? "text-sm font-semibold uppercase tracking-[0.14em] text-gold"
-                      : "text-base font-semibold text-white"
-                  }
-                >
-                  {category.name}
-                </Link>
-                {category.subs.length > 0 && (
-                  <div className="mt-2 space-y-1.5 pl-3">
-                    {category.subs.map((sub) => (
-                      <Link
-                        key={sub.slug}
-                        href={`/category/${category.slug}/${sub.slug}`}
-                        className="block text-[11px] uppercase leading-5 tracking-[0.12em] text-gray-400"
-                      >
-                        {sub.name}
-                      </Link>
-                    ))}
+          <>
+            <button
+              type="button"
+              aria-label="Close menu backdrop"
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-x-0 bottom-0 top-[6.75rem] z-40 bg-[#04070f]/72 backdrop-blur-sm xl:hidden"
+            />
+            <div className="fixed inset-x-4 bottom-16 top-[7.25rem] z-50 overflow-hidden rounded-2xl border border-white/8 bg-[#0b1020]/96 shadow-[0_20px_60px_rgba(2,6,16,0.45)] xl:hidden">
+              <div className="h-full overflow-y-auto overscroll-contain px-4 pb-8 pt-4">
+                {categories.map((category) => (
+                  <div key={category.slug} className="mb-4 last:mb-0">
+                    <Link
+                      href={`/category/${category.slug}`}
+                      onClick={() => setMobileOpen(false)}
+                      className={
+                        category.navStyle === "patreon"
+                          ? "text-sm font-semibold uppercase tracking-[0.14em] text-gold"
+                          : "text-base font-semibold text-white"
+                      }
+                    >
+                      {category.name}
+                    </Link>
+                    {category.subs.length > 0 && (
+                      <div className="mt-2 space-y-1.5 pl-3">
+                        {category.subs.map((sub) => (
+                          <Link
+                            key={sub.slug}
+                            href={`/category/${category.slug}/${sub.slug}`}
+                            onClick={() => setMobileOpen(false)}
+                            className="block text-[11px] uppercase leading-5 tracking-[0.12em] text-gray-400"
+                          >
+                            {sub.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </header>
