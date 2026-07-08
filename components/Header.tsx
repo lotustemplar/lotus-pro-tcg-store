@@ -47,7 +47,11 @@ export function Header({
   }, [mobileOpen]);
 
   return (
-    <header className="sticky top-0 z-40 border-b-0 bg-[#090d16]/95 backdrop-blur sm:border-b sm:border-white/8">
+    <header
+      className={`border-b-0 bg-[#090d16]/95 backdrop-blur sm:border-b sm:border-white/8 ${
+        mobileOpen ? "fixed inset-x-0 top-0 z-[60]" : "sticky top-0 z-40"
+      }`}
+    >
       <div className="relative mx-auto max-w-[1500px] px-4">
         <div className="flex items-center gap-5 py-3">
           <Link href="/" className="flex-none">
