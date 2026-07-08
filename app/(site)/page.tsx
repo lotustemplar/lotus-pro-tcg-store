@@ -101,7 +101,7 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-0">
-      <section className="relative left-1/2 w-screen -translate-x-1/2 border-b border-white/8 bg-[#090d16]">
+      <section className="relative left-1/2 w-screen -translate-x-1/2 border-b-0 bg-[#090d16] sm:border-b sm:border-white/8">
         <div className="mx-auto max-w-[1500px] px-0 sm:px-4 sm:py-0">
           <HeroBannerCarousel slides={settings.heroSlides} brandName={settings.brandName} />
         </div>

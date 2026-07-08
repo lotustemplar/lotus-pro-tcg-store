@@ -47,7 +47,7 @@ export function Header({
   }, [mobileOpen]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/8 bg-[#090d16]/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b-0 bg-[#090d16]/95 backdrop-blur sm:border-b sm:border-white/8">
       <div className="relative mx-auto max-w-[1500px] px-4">
         <div className="flex items-center gap-5 py-3">
           <Link href="/" className="flex-none">
@@ -145,7 +145,7 @@ export function Header({
           </div>
         </div>
 
-        <div className="pb-3 xl:hidden">
+        <div className="pb-0 xl:hidden sm:pb-3">
           <SearchBar />
         </div>
 
