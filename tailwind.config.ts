@@ -31,17 +31,22 @@ const config: Config = {
         gold: "#d4af37",
       },
       fontFamily: {
-        display: ["Rajdhani", "Inter", "system-ui", "sans-serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Space Grotesk", "Manrope", "system-ui", "sans-serif"],
+        sans: ["Manrope", "system-ui", "sans-serif"],
       },
       keyframes: {
         flicker: {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.75" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
       },
       animation: {
         flicker: "flicker 1.4s ease-in-out infinite",
+        float: "float 7s ease-in-out infinite",
       },
     },
   },

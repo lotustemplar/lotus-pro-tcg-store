@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { formatCents } from "@/lib/format";
 
 type Result = {
@@ -48,23 +47,26 @@ export function SearchBar() {
   }, [query]);
 
   return (
-    <div ref={wrapRef} className="relative w-full max-w-md">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => query.length >= 2 && setOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && query.trim()) {
-            router.push(`/search?q=${encodeURIComponent(query)}`);
-            setOpen(false);
-          }
-        }}
-        placeholder="Search products, sets, singles..."
-        className="w-full rounded-full border border-border bg-bg-panel px-4 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-brand-500"
-      />
+    <div ref={wrapRef} className="relative w-full max-w-xl">
+      <div className="lux-ring flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 backdrop-blur-xl transition focus-within:border-brand-400/70 focus-within:bg-white/[0.07]">
+        <span className="text-xs uppercase tracking-[0.3em] text-gray-500">Search</span>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => query.length >= 2 && setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query.trim()) {
+              router.push(`/search?q=${encodeURIComponent(query)}`);
+              setOpen(false);
+            }
+          }}
+          placeholder="Search products, sets, sealed boxes, and more"
+          className="w-full bg-transparent text-sm text-white placeholder-gray-500 outline-none"
+        />
+      </div>
       {open && (
-        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-lg border border-border bg-bg-panel shadow-2xl">
+        <div className="absolute z-50 mt-3 w-full overflow-hidden rounded-[24px] border border-white/10 bg-[#0e1423]/95 shadow-[0_30px_80px_rgba(4,8,20,0.58)] backdrop-blur-xl">
           {loading && <div className="px-4 py-3 text-sm text-gray-400">Searching...</div>}
           {!loading && results.length === 0 && (
             <div className="px-4 py-3 text-sm text-gray-400">No matches yet.</div>
@@ -74,13 +76,20 @@ export function SearchBar() {
               <a
                 key={r.slug}
                 href={`/product/${r.slug}`}
-                className="flex items-center gap-3 px-4 py-2 hover:bg-bg-elevated"
+                className="flex items-center gap-3 border-t border-white/5 px-4 py-3 first:border-t-0 hover:bg-white/[0.04]"
               >
-                <div className="relative h-10 w-10 flex-none overflow-hidden rounded bg-bg-elevated">
-                  {r.image && <Image src={r.image} alt={r.name} fill className="object-cover" />}
+                <div className="h-12 w-12 flex-none overflow-hidden rounded-2xl border border-white/10 bg-bg-elevated">
+                  {r.image ? (
+                    <img src={r.image} alt={r.name} className="h-full w-full object-cover" />
+                  ) : null}
                 </div>
-                <div className="flex-1 truncate text-sm text-white">{r.name}</div>
-                <div className="flex-none text-sm text-brand-300">{formatCents(r.priceCents)}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-white">{r.name}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-gray-500">Product match</div>
+                </div>
+                <div className="flex-none text-sm font-semibold text-brand-300">
+                  {formatCents(r.priceCents)}
+                </div>
               </a>
             ))}
         </div>
