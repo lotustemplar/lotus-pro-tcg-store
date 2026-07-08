@@ -138,8 +138,9 @@ export function Header({
               className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/[0.04]"
               onClick={() => setMobileOpen((value) => !value)}
               aria-label="Toggle menu"
+              aria-expanded={mobileOpen}
             >
-              Menu
+              {mobileOpen ? "Close" : "Menu"}
             </button>
           </div>
         </div>
@@ -149,8 +150,22 @@ export function Header({
         </div>
 
         {mobileOpen && (
-          <div className="absolute inset-x-4 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-white/8 bg-[#0b1020]/96 shadow-[0_20px_60px_rgba(2,6,16,0.45)] xl:hidden">
-            <div className="max-h-[calc(100dvh-11rem)] overflow-y-auto overscroll-contain px-4 pb-8 pt-4">
+          <div className="absolute inset-x-4 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-white/12 bg-[#070b14] shadow-[0_24px_70px_rgba(2,6,16,0.82)] xl:hidden">
+            <div className="border-b border-white/10 bg-[#0a1020] px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
+                  Browse Categories
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-white"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="max-h-[calc(100dvh-13rem)] overflow-y-auto overscroll-contain bg-[#070b14] px-4 pb-8 pt-4">
               {categories.map((category) => (
                 <div key={category.slug} className="mb-4 last:mb-0">
                   <Link
@@ -171,7 +186,7 @@ export function Header({
                           key={sub.slug}
                           href={`/category/${category.slug}/${sub.slug}`}
                           onClick={() => setMobileOpen(false)}
-                          className="block text-[11px] uppercase leading-5 tracking-[0.12em] text-gray-400"
+                          className="block rounded-lg px-2 py-1 text-[11px] uppercase leading-5 tracking-[0.12em] text-gray-300 transition hover:bg-white/[0.04] hover:text-white"
                         >
                           {sub.name}
                         </Link>

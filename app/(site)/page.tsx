@@ -30,6 +30,65 @@ const FEATURE_STRIP = [
   },
 ];
 
+function CategoryCard({
+  category,
+  image,
+  compact = false,
+}: {
+  category: { slug: string; name: string };
+  image: string | null;
+  compact?: boolean;
+}) {
+  return (
+    <Link
+      href={`/category/${category.slug}`}
+      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0d1220] shadow-[0_14px_34px_rgba(2,6,16,0.36)]"
+    >
+      <div className="absolute inset-0">
+        {image ? (
+          <img
+            src={image}
+            alt={category.name}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="h-full w-full bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.38),rgba(9,13,22,1)_70%)]" />
+        )}
+        <div
+          className={
+            compact
+              ? "absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.12),rgba(9,13,22,0.88))]"
+              : "absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.08),rgba(9,13,22,0.85))]"
+          }
+        />
+      </div>
+
+      <div className={compact ? "relative flex min-h-[158px] flex-col justify-end p-4" : "relative flex min-h-[210px] flex-col justify-end p-5"}>
+        <h2
+          className={
+            compact
+              ? "font-display text-[1.35rem] font-medium leading-tight text-white"
+              : "font-display text-[1.75rem] font-medium text-white sm:text-[2rem]"
+          }
+        >
+          {category.name}
+        </h2>
+        <div className={compact ? "mt-2" : "mt-3"}>
+          <span
+            className={
+              compact
+                ? "inline-flex rounded-md bg-brand-700 px-3 py-1.5 text-xs font-medium text-white transition group-hover:bg-brand-600"
+                : "inline-flex rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white transition group-hover:bg-brand-600"
+            }
+          >
+            Shop Now
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default async function HomePage() {
   const [featured, settings, categoryPreviews] = await Promise.all([
     getFeaturedProducts(),
@@ -38,6 +97,7 @@ export default async function HomePage() {
   ]);
 
   const carouselProducts = featured.map(toCardProps);
+  const mobileCategoryPreviews = categoryPreviews.slice(0, 4);
 
   return (
     <div className="space-y-0">
@@ -52,16 +112,16 @@ export default async function HomePage() {
           {FEATURE_STRIP.map((item) => (
             <div
               key={item.title}
-              className="flex min-h-[138px] flex-col justify-between bg-[#0a0e17] px-4 py-4 sm:min-h-[148px] sm:px-5 sm:py-5"
+              className="flex min-h-[92px] items-start gap-3 bg-[#0a0e17] px-3 py-3 sm:min-h-[104px] sm:px-4 sm:py-4"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-400/40 bg-brand-500/10 text-2xl">
+              <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full border border-brand-400/35 bg-brand-500/10 text-base sm:h-9 sm:w-9 sm:text-lg">
                 {item.icon}
               </div>
-              <div className="pt-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white sm:text-xs sm:tracking-[0.18em]">
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-white sm:text-[10px] sm:tracking-[0.14em]">
                   {item.title}
                 </p>
-                <p className="mt-1 text-xs leading-5 text-gray-400 sm:text-sm sm:leading-6">
+                <p className="mt-1 text-[11px] leading-4 text-gray-400 sm:text-xs sm:leading-5">
                   {item.description}
                 </p>
               </div>
@@ -71,36 +131,24 @@ export default async function HomePage() {
       </section>
 
       <section className="py-4">
-        <div className="grid gap-4 lg:grid-cols-5">
-          {categoryPreviews.map((category) => (
-            <Link
+        <div className="grid grid-cols-2 gap-3 lg:hidden">
+          {mobileCategoryPreviews.map((category) => (
+            <CategoryCard
               key={category.slug}
-              href={`/category/${category.slug}`}
-              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0d1220] shadow-[0_14px_34px_rgba(2,6,16,0.36)]"
-            >
-              <div className="absolute inset-0">
-                {settings.categoryBackgrounds[category.slug] || category.image ? (
-                  <img
-                    src={settings.categoryBackgrounds[category.slug] || category.image || ""}
-                    alt={category.name}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="h-full w-full bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.38),rgba(9,13,22,1)_70%)]" />
-                )}
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.08),rgba(9,13,22,0.85))]" />
-              </div>
-              <div className="relative flex min-h-[210px] flex-col justify-end p-5">
-                <h2 className="font-display text-[1.75rem] font-medium text-white sm:text-[2rem]">
-                  {category.name}
-                </h2>
-                <div className="mt-3">
-                  <span className="inline-flex rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white transition group-hover:bg-brand-600">
-                    Shop Now
-                  </span>
-                </div>
-              </div>
-            </Link>
+              category={category}
+              image={settings.categoryBackgrounds[category.slug] || category.image || null}
+              compact
+            />
+          ))}
+        </div>
+
+        <div className="hidden gap-4 lg:grid lg:grid-cols-5">
+          {categoryPreviews.map((category) => (
+            <CategoryCard
+              key={category.slug}
+              category={category}
+              image={settings.categoryBackgrounds[category.slug] || category.image || null}
+            />
           ))}
         </div>
       </section>
