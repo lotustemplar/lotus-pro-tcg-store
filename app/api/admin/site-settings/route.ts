@@ -13,7 +13,7 @@ import {
 const heroSlideSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  imageUrl: z.string().nullable(),
+  imageUrl: z.string().nullable().optional(),
   buttonLabel: z.string().min(1),
   buttonHref: z.string().min(1),
 });
@@ -52,19 +52,46 @@ const siteSettingsSchema = z.object({
   footerBottomPromoRight: z.string().min(1),
 });
 
+const siteSettingsPatchSchema = siteSettingsSchema.partial();
+
 export async function PUT(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  const parsed = siteSettingsSchema.safeParse(body);
+  const parsed = siteSettingsPatchSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const currentRecord = await prisma.siteSettings.findUnique({
+    where: { id: SITE_SETTINGS_ID },
+  });
+
+  const current = mergeSiteSettings(currentRecord ?? DEFAULT_SITE_SETTINGS);
+
+  const nextHeroSlides =
+    parsed.data.heroSlides?.map((slide, index) => {
+      const existingSlide = current.heroSlides.find((item) => item.id === slide.id);
+
+      return {
+        id: slide.id,
+        name: slide.name,
+        imageUrl:
+          slide.imageUrl !== undefined ? slide.imageUrl : (existingSlide?.imageUrl ?? null),
+        buttonLabel: slide.buttonLabel,
+        buttonHref: slide.buttonHref,
+      };
+    }) ?? current.heroSlides;
+
   const data = mergeSiteSettings({
-    ...DEFAULT_SITE_SETTINGS,
+    ...current,
     ...parsed.data,
+    heroSlides: nextHeroSlides,
+    categoryBackgrounds: {
+      ...current.categoryBackgrounds,
+      ...(parsed.data.categoryBackgrounds ?? {}),
+    },
   });
 
   const dbData = serializeSiteSettingsForDb(data);

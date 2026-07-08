@@ -13,6 +13,15 @@ type SiteSettingsFormProps = {
   initial: SiteSettings;
 };
 
+type HeroSlideSavePayload = Omit<HeroSlide, "imageUrl"> & {
+  imageUrl?: string | null;
+};
+
+type SiteSettingsSavePayload = Partial<Omit<SiteSettings, "heroSlides" | "categoryBackgrounds">> & {
+  heroSlides?: HeroSlideSavePayload[];
+  categoryBackgrounds?: Record<string, string | null>;
+};
+
 type BrandAssetKey = "logoWideUrl" | "logoSquareUrl";
 
 const MAX_SOURCE_FILE_BYTES = 8 * 1024 * 1024;
@@ -105,7 +114,7 @@ function fitWithin(width: number, height: number, maxWidth: number, maxHeight: n
 
 async function prepareAssetFile(
   file: File,
-  options: { maxWidth: number; maxHeight: number },
+  options: { maxWidth: number; maxHeight: number; maxOutputBytes: number },
 ): Promise<string> {
   if (file.size > MAX_SOURCE_FILE_BYTES) {
     throw new Error("Please choose an image under 8 MB before upload.");
@@ -117,30 +126,44 @@ async function prepareAssetFile(
   }
 
   const image = await loadImage(originalDataUrl);
-  const { width, height } = fitWithin(
-    image.naturalWidth,
-    image.naturalHeight,
-    options.maxWidth,
-    options.maxHeight,
-  );
+  const initialSize = fitWithin(image.naturalWidth, image.naturalHeight, options.maxWidth, options.maxHeight);
+  const scales = [1, 0.85, 0.7, 0.55];
+  const qualities = [0.86, 0.78, 0.7, 0.62, 0.54];
+  let fallbackOutput = "";
 
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) {
-    throw new Error("Image compression is not available in this browser.");
+  for (const scale of scales) {
+    const width = Math.max(1, Math.round(initialSize.width * scale));
+    const height = Math.max(1, Math.round(initialSize.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Image compression is not available in this browser.");
+    }
+
+    context.drawImage(image, 0, 0, width, height);
+
+    for (const quality of qualities) {
+      const output = canvas.toDataURL("image/webp", quality);
+      if (!output || output === "data:,") {
+        continue;
+      }
+
+      fallbackOutput = output;
+      const base64 = output.split(",")[1] ?? "";
+      const estimatedBytes = Math.floor((base64.length * 3) / 4);
+      if (estimatedBytes <= options.maxOutputBytes) {
+        return output;
+      }
+    }
   }
 
-  context.drawImage(image, 0, 0, width, height);
-  const outputType = file.type === "image/png" ? "image/png" : "image/webp";
-  const output = canvas.toDataURL(outputType, outputType === "image/webp" ? 0.92 : undefined);
-
-  if (!output || output === "data:,") {
+  if (!fallbackOutput) {
     throw new Error("Failed to prepare the selected image.");
   }
 
-  return output;
+  return fallbackOutput;
 }
 
 function getSuccessMessage(deploy?: { triggered?: boolean; reason?: string; detail?: string }) {
@@ -163,6 +186,43 @@ function createSlide(index: number): HeroSlide {
     buttonLabel: "Shop Now",
     buttonHref: "/",
   };
+}
+
+function buildSiteSettingsPatch(current: SiteSettings, saved: SiteSettings): SiteSettingsSavePayload {
+  const patch: SiteSettingsSavePayload = {};
+
+  (Object.keys(current) as (keyof Omit<SiteSettings, "heroSlides" | "categoryBackgrounds">)[]).forEach((key) => {
+    if (JSON.stringify(current[key]) !== JSON.stringify(saved[key])) {
+      (patch as Record<string, string | null | undefined>)[key] = current[key];
+    }
+  });
+
+  if (JSON.stringify(current.categoryBackgrounds) !== JSON.stringify(saved.categoryBackgrounds)) {
+    const categoryPatch = Object.fromEntries(
+      Object.entries(current.categoryBackgrounds).filter(
+        ([slug, value]) => saved.categoryBackgrounds[slug] !== value,
+      ),
+    );
+
+    patch.categoryBackgrounds = categoryPatch;
+  }
+
+  if (JSON.stringify(current.heroSlides) !== JSON.stringify(saved.heroSlides)) {
+    patch.heroSlides = current.heroSlides.map((slide) => {
+      const savedSlide = saved.heroSlides.find((item) => item.id === slide.id);
+      const imageUnchanged = savedSlide?.imageUrl === slide.imageUrl;
+
+      return {
+        id: slide.id,
+        name: slide.name,
+        buttonLabel: slide.buttonLabel,
+        buttonHref: slide.buttonHref,
+        ...(imageUnchanged ? {} : { imageUrl: slide.imageUrl }),
+      };
+    });
+  }
+
+  return patch;
 }
 
 export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
@@ -212,7 +272,10 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
     setMessage(null);
 
     try {
-      const dataUrl = await prepareAssetFile(file, BRAND_ASSETS[key]);
+      const dataUrl = await prepareAssetFile(file, {
+        ...BRAND_ASSETS[key],
+        maxOutputBytes: key === "logoWideUrl" ? 450 * 1024 : 400 * 1024,
+      });
       update(key, dataUrl as SiteSettings[typeof key]);
     } catch (error) {
       setMessage({
@@ -232,7 +295,11 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
     setMessage(null);
 
     try {
-      const dataUrl = await prepareAssetFile(file, { maxWidth: 1920, maxHeight: 900 });
+      const dataUrl = await prepareAssetFile(file, {
+        maxWidth: 1600,
+        maxHeight: 760,
+        maxOutputBytes: 1200 * 1024,
+      });
       updateSlide(index, { imageUrl: dataUrl });
     } catch (error) {
       setMessage({
@@ -252,7 +319,11 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
     setMessage(null);
 
     try {
-      const dataUrl = await prepareAssetFile(file, { maxWidth: 1200, maxHeight: 800 });
+      const dataUrl = await prepareAssetFile(file, {
+        maxWidth: 1100,
+        maxHeight: 740,
+        maxOutputBytes: 650 * 1024,
+      });
       update("categoryBackgrounds", {
         ...values.categoryBackgrounds,
         [slug]: dataUrl,
@@ -271,10 +342,12 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
     setSaving(true);
     setMessage(null);
 
+    const payload = buildSiteSettingsPatch(values, savedValues);
+
     const response = await fetch("/api/admin/site-settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json().catch(() => ({}));
