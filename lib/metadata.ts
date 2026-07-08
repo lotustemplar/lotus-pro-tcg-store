@@ -10,6 +10,10 @@ export function getSiteUrl() {
 export function toAbsoluteUrl(path: string | null | undefined) {
   if (!path) return `${getSiteUrl()}${DEFAULT_SOCIAL_IMAGE}`;
 
+  if (path.startsWith("data:")) {
+    return `${getSiteUrl()}${DEFAULT_SOCIAL_IMAGE}`;
+  }
+
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
