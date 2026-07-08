@@ -39,6 +39,20 @@ const config: Config = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.75" },
         },
+        marketPulse: {
+          "0%, 100%": {
+            color: "#f87171",
+            opacity: "1",
+            transform: "scale(1)",
+            textShadow: "0 0 0 rgba(248,113,113,0)",
+          },
+          "50%": {
+            color: "#ef4444",
+            opacity: "0.92",
+            transform: "scale(1.04)",
+            textShadow: "0 0 18px rgba(239,68,68,0.5)",
+          },
+        },
         float: {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-8px)" },
@@ -46,6 +60,7 @@ const config: Config = {
       },
       animation: {
         flicker: "flicker 1.4s ease-in-out infinite",
+        "market-pulse": "marketPulse 1.8s ease-in-out infinite",
         float: "float 7s ease-in-out infinite",
       },
     },

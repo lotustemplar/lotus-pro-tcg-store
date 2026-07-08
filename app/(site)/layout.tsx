@@ -4,6 +4,7 @@ import { CartProvider } from "@/components/CartContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
+import { StickyPromoBar } from "@/components/StickyPromoBar";
 import { getNavCategories } from "@/lib/nav";
 import { getSiteSettings } from "@/lib/site-settings";
 
@@ -26,11 +27,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-bg text-white">
+      <body className="min-h-screen bg-bg pb-14 text-white">
         <CartProvider>
           <Header categories={categories} settings={settings} />
           <main className="mx-auto min-h-[60vh] max-w-[1500px] px-4 py-8">{children}</main>
           <Footer categories={categories} settings={settings} />
+          <StickyPromoBar />
           <CartDrawer />
         </CartProvider>
       </body>

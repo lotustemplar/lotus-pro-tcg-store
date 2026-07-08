@@ -11,22 +11,22 @@ const FEATURE_STRIP = [
   {
     title: "AUTHENTIC PRODUCTS",
     description: "100% authenticity guaranteed",
-    icon: "◈",
+    icon: "⭐",
   },
   {
     title: "CAREFULLY PACKED",
     description: "Secure and collector grade shipping",
-    icon: "▣",
+    icon: "📦",
   },
   {
     title: "FAST SHIPPING",
     description: "Quick dispatch on all orders",
-    icon: "➜",
+    icon: "✈️",
   },
   {
     title: "COLLECTOR FIRST",
     description: "Community focused, collector driven",
-    icon: "✦",
+    icon: "🏆",
   },
 ];
 
@@ -50,8 +50,11 @@ export default async function HomePage() {
       <section className="relative left-1/2 w-screen -translate-x-1/2 border-b border-white/8 bg-[#0a0e17]">
         <div className="mx-auto grid max-w-[1500px] gap-0 px-4 md:grid-cols-2 xl:grid-cols-4">
           {FEATURE_STRIP.map((item) => (
-            <div key={item.title} className="flex items-center gap-4 border-b border-white/8 px-5 py-5 md:border-r xl:border-b-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-400/40 text-xl text-brand-300">
+            <div
+              key={item.title}
+              className="flex items-center gap-4 border-b border-white/8 px-5 py-5 md:border-r xl:border-b-0"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-400/40 bg-brand-500/10 text-2xl">
                 {item.icon}
               </div>
               <div>

@@ -49,12 +49,12 @@ export function Header({
                   {category.name}
                 </Link>
                 {category.subs.length > 0 && openSlug === category.slug && (
-                  <div className="absolute left-1/2 top-full z-30 mt-4 w-72 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#0c1220]/97 p-2 shadow-[0_24px_60px_rgba(2,6,16,0.58)]">
+                  <div className="absolute left-1/2 top-full z-30 mt-4 w-72 -translate-x-1/2 rounded-2xl border border-white/12 bg-[#0b1020] p-2 shadow-[0_24px_60px_rgba(2,6,16,0.68)]">
                     {category.subs.map((sub) => (
                       <Link
                         key={sub.slug}
                         href={`/category/${category.slug}/${sub.slug}`}
-                        className="block rounded-xl px-4 py-3 text-sm text-gray-300 transition hover:bg-white/[0.04] hover:text-white"
+                        className="block rounded-xl bg-[#12192b] px-4 py-3 text-sm text-gray-200 transition hover:bg-[#1a2338] hover:text-white"
                       >
                         {sub.name}
                       </Link>
