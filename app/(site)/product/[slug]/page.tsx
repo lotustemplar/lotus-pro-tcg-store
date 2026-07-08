@@ -6,6 +6,8 @@ import { AddToCartButton } from "@/components/AddToCartButton";
 import { StockBadge } from "@/components/StockBadge";
 import { RestockNotifyForm } from "@/components/RestockNotifyForm";
 import type { Metadata } from "next";
+import { buildSocialMetadata } from "@/lib/metadata";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +24,22 @@ async function getProduct(slug: string) {
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const product = await getProduct(params.slug);
+  const [product, settings] = await Promise.all([getProduct(params.slug), getSiteSettings()]);
   if (!product) return {};
+  const title = product.seoTitle || product.name;
+  const description = product.seoDescription || product.description.slice(0, 155);
+
   return {
-    title: product.seoTitle || product.name,
-    description: product.seoDescription || product.description.slice(0, 155),
+    title,
+    description,
     keywords: product.seoKeywords ?? undefined,
+    ...buildSocialMetadata({
+      title,
+      description,
+      path: `/product/${product.slug}`,
+      image: product.images[0]?.url ?? null,
+      siteName: settings.brandName,
+    }),
   };
 }
 

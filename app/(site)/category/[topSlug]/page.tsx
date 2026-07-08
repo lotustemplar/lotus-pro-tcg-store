@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { getProductsForCategoryIds, getTopCategory, toCardProps } from "@/lib/products";
 import { getSiteSettings } from "@/lib/site-settings";
+import { buildSocialMetadata } from "@/lib/metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,19 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const [cat, settings] = await Promise.all([getTopCategory(params.topSlug), getSiteSettings()]);
   if (!cat) return {};
+  const title = cat.name;
+  const description = `Shop ${cat.name} sealed product, boxes, packs, and more at ${settings.brandName}.`;
 
   return {
-    title: cat.name,
-    description: `Shop ${cat.name} sealed product, boxes, packs, and more at ${settings.brandName}.`,
+    title,
+    description,
+    ...buildSocialMetadata({
+      title,
+      description,
+      path: `/category/${cat.slug}`,
+      image: settings.categoryBackgrounds[cat.slug] || null,
+      siteName: settings.brandName,
+    }),
   };
 }
 

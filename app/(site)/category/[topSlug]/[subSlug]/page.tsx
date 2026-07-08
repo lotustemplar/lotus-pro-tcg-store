@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { getProductsForCategoryIds, getSubCategory, toCardProps } from "@/lib/products";
 import { getSiteSettings } from "@/lib/site-settings";
+import { buildSocialMetadata } from "@/lib/metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +17,19 @@ export async function generateMetadata({
     getSiteSettings(),
   ]);
   if (!cat) return {};
+  const title = cat.name;
+  const description = `Shop ${cat.name} at ${settings.brandName}.`;
 
   return {
-    title: cat.name,
-    description: `Shop ${cat.name} at ${settings.brandName}.`,
+    title,
+    description,
+    ...buildSocialMetadata({
+      title,
+      description,
+      path: `/category/${params.topSlug}/${params.subSlug}`,
+      image: settings.categoryBackgrounds[params.topSlug] || null,
+      siteName: settings.brandName,
+    }),
   };
 }
 

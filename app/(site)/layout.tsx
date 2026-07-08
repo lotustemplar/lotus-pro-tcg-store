@@ -7,18 +7,27 @@ import { CartDrawer } from "@/components/CartDrawer";
 import { StickyPromoBar } from "@/components/StickyPromoBar";
 import { getNavCategories } from "@/lib/nav";
 import { getSiteSettings } from "@/lib/site-settings";
+import { buildSocialMetadata } from "@/lib/metadata";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
+  const title = settings.siteMetaTitle;
+  const description = settings.siteMetaDescription;
 
   return {
     title: {
-      default: settings.siteMetaTitle,
+      default: title,
       template: `%s | ${settings.brandName}`,
     },
-    description: settings.siteMetaDescription,
+    description,
+    ...buildSocialMetadata({
+      title,
+      description,
+      image: settings.logoSquareUrl,
+      siteName: settings.brandName,
+    }),
   };
 }
 
