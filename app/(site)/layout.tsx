@@ -7,16 +7,19 @@ import { CartDrawer } from "@/components/CartDrawer";
 import { getNavCategories } from "@/lib/nav";
 import { getSiteSettings } from "@/lib/site-settings";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Lotus Pro Decks | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz",
-    template: "%s | Lotus Pro Decks",
-  },
-  description:
-    "Sealed product, singles, and pro-built decks for Magic the Gathering, Pokemon, One Piece, Riftbound, and Weiss Schwarz.",
-};
-
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+
+  return {
+    title: {
+      default: settings.siteMetaTitle,
+      template: `%s | ${settings.brandName}`,
+    },
+    description: settings.siteMetaDescription,
+  };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [categories, settings] = await Promise.all([getNavCategories(), getSiteSettings()]);

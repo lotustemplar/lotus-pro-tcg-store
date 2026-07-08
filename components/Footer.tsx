@@ -1,7 +1,12 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { NavCategory } from "@/lib/nav";
 import type { SiteSettings } from "@/lib/site-settings";
+
+function renderLegalText(template: string, brandName: string) {
+  return template
+    .replaceAll("{year}", String(new Date().getFullYear()))
+    .replaceAll("{brandName}", brandName);
+}
 
 export function Footer({
   categories,
@@ -15,11 +20,17 @@ export function Footer({
       <div className="mx-auto max-w-7xl px-4 py-10">
         <div className="grid gap-8 md:grid-cols-4">
           <div>
-            <Image src={settings.logoSquareUrl} alt={settings.brandName} width={72} height={72} />
+            <img
+              src={settings.logoSquareUrl}
+              alt={settings.brandName}
+              className="h-[72px] w-[72px] object-contain"
+            />
             <p className="mt-3 text-sm text-gray-400">{settings.footerDescription}</p>
           </div>
           <div>
-            <h4 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-white">Shop</h4>
+            <h4 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-white">
+              {settings.footerShopHeading}
+            </h4>
             <ul className="space-y-1">
               {categories.map((c) => (
                 <li key={c.slug}>
@@ -31,42 +42,43 @@ export function Footer({
             </ul>
           </div>
           <div>
-            <h4 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-white">Support</h4>
+            <h4 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-white">
+              {settings.footerSupportHeading}
+            </h4>
             <ul className="space-y-1 text-sm text-gray-400">
               <li>
-                <Link href="/contact" className="hover:text-brand-300">
-                  Contact Us
+                <Link href={settings.footerContactHref} className="hover:text-brand-300">
+                  {settings.footerContactLabel}
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="hover:text-brand-300">
-                  Shipping & Returns
+                <Link href={settings.footerShippingHref} className="hover:text-brand-300">
+                  {settings.footerShippingLabel}
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="hover:text-brand-300">
-                  FAQ
+                <Link href={settings.footerFaqHref} className="hover:text-brand-300">
+                  {settings.footerFaqLabel}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <h4 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-white">Shipping</h4>
-            <p className="text-sm text-gray-400">Flat rate: $5.99 on every order.</p>
-            <p className="text-sm text-brand-300">Free shipping on orders over $150.</p>
+            <h4 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-white">
+              {settings.footerShippingHeading}
+            </h4>
+            <p className="text-sm text-gray-400">{settings.footerShippingLinePrimary}</p>
+            <p className="text-sm text-brand-300">{settings.footerShippingLineHighlight}</p>
           </div>
         </div>
       </div>
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-gray-500 sm:flex-row">
-          <p>
-            Copyright {new Date().getFullYear()} {settings.brandName}. Not affiliated with Wizards
-            of the Coast, Pokemon Company, Bandai, Riot Games, or Bushiroad.
-          </p>
+          <p>{renderLegalText(settings.footerLegalText, settings.brandName)}</p>
           <div className="flex items-center gap-3">
-            <span>$5.99 flat shipping</span>
+            <span>{settings.footerBottomPromoLeft}</span>
             <span>|</span>
-            <span>Free shipping over $150</span>
+            <span>{settings.footerBottomPromoRight}</span>
           </div>
         </div>
       </div>

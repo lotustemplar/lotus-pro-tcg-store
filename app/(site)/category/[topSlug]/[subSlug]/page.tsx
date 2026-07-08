@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
-import { getSubCategory, getProductsForCategoryIds, toCardProps } from "@/lib/products";
-import { ProductCard } from "@/components/ProductCard";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { ProductCard } from "@/components/ProductCard";
+import { getProductsForCategoryIds, getSubCategory, toCardProps } from "@/lib/products";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,15 @@ export async function generateMetadata({
 }: {
   params: { topSlug: string; subSlug: string };
 }): Promise<Metadata> {
-  const cat = await getSubCategory(params.topSlug, params.subSlug);
+  const [cat, settings] = await Promise.all([
+    getSubCategory(params.topSlug, params.subSlug),
+    getSiteSettings(),
+  ]);
   if (!cat) return {};
+
   return {
     title: cat.name,
-    description: `Shop ${cat.name} at Lotus Pro Decks.`,
+    description: `Shop ${cat.name} at ${settings.brandName}.`,
   };
 }
 
@@ -37,7 +42,7 @@ export default async function SubCategoryPage({
         ))}
       </div>
       {products.length === 0 && (
-        <p className="text-gray-400">No products in this category yet — check back soon.</p>
+        <p className="text-gray-400">No products in this category yet - check back soon.</p>
       )}
     </div>
   );

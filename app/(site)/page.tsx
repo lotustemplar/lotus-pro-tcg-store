@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Carousel } from "@/components/Carousel";
 import { CATEGORY_TREE } from "@/lib/categories";
@@ -63,13 +62,10 @@ export default async function HomePage() {
           {settings.heroBannerUrl && (
             <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-bg-elevated shadow-[0_0_40px_rgba(124,58,237,0.2)]">
               <div className="relative aspect-[12/5] w-full">
-                <Image
+                <img
                   src={settings.heroBannerUrl}
                   alt={`${settings.brandName} hero banner`}
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 45vw"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               </div>
             </div>
@@ -80,7 +76,9 @@ export default async function HomePage() {
       {carouselProducts.length > 0 && (
         <section id="featured-right-now">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-display text-2xl font-bold text-white">Featured Right Now</h2>
+            <h2 className="font-display text-2xl font-bold text-white">
+              {settings.featuredSectionTitle}
+            </h2>
           </div>
           <Carousel products={carouselProducts} />
         </section>

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useState } from "react";
 import type { NavCategory } from "@/lib/nav";
 import type { SiteSettings } from "@/lib/site-settings";
@@ -23,7 +22,11 @@ export function Header({
     <header className="sticky top-0 z-40 border-b border-border bg-bg/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
         <Link href="/" className="flex-none">
-          <Image src={settings.logoWideUrl} alt={settings.brandName} width={180} height={60} priority />
+          <img
+            src={settings.logoWideUrl}
+            alt={settings.brandName}
+            className="h-[60px] w-auto max-w-[180px] object-contain"
+          />
         </Link>
 
         <nav className="hidden flex-1 items-center gap-1 lg:flex">

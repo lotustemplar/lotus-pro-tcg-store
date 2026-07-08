@@ -14,19 +14,19 @@ datasource db {
 // items under each (Sealed Cases / Booster Boxes / Booster Packs, plus the
 // Magic-only Commander Deck + Secret Lairs subcategories).
 model Category {
-  id          String     @id @default(cuid())
-  name        String
-  slug        String
-  isTopLevel  Boolean    @default(false)
+  id         String     @id @default(cuid())
+  name       String
+  slug       String
+  isTopLevel Boolean    @default(false)
   // visual treatment flag - e.g. "Patreon Access" renders in gold/gradient nav styling
-  navStyle    String     @default("default") // "default" | "patreon"
-  sortOrder   Int        @default(0)
-  parentId    String?
-  parent      Category?  @relation("CategoryToSub", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryToSub")
-  products    Product[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  navStyle   String     @default("default") // "default" | "patreon"
+  sortOrder  Int        @default(0)
+  parentId   String?
+  parent     Category?  @relation("CategoryToSub", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryToSub")
+  products   Product[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   // subcategory slugs (e.g. "booster-boxes") repeat across parents, so
   // uniqueness is scoped per-parent rather than global
@@ -34,11 +34,11 @@ model Category {
 }
 
 model Product {
-  id               String    @id @default(cuid())
-  name             String
-  slug             String    @unique
-  description      String    @default("")
-  priceCents       Int
+  id                String         @id @default(cuid())
+  name              String
+  slug              String         @unique
+  description       String         @default("")
+  priceCents        Int
   sourceMarketplace String?
   sourceUrl         String?
   sourceProductId   Int?
@@ -47,27 +47,27 @@ model Product {
   sourceProductType String?
   sourcePriceCents  Int?
   sourceImageUrl    String?
-  autoUpdatePrice   Boolean   @default(false)
+  autoUpdatePrice   Boolean        @default(false)
   lastSyncedAt      DateTime?
   lastSyncError     String?
-  compareAtCents   Int?
-  sku              String?   @unique
-  quantity         Int       @default(0)
-  images           ProductImage[]
-  categoryId       String
-  category         Category  @relation(fields: [categoryId], references: [id])
-  featuredOnHome   Boolean   @default(false)
-  featuredOrder    Int       @default(0)
-  isActive         Boolean   @default(true)
+  compareAtCents    Int?
+  sku               String?        @unique
+  quantity          Int            @default(0)
+  images            ProductImage[]
+  categoryId        String
+  category          Category       @relation(fields: [categoryId], references: [id])
+  featuredOnHome    Boolean        @default(false)
+  featuredOrder     Int            @default(0)
+  isActive          Boolean        @default(true)
   // SEO
-  seoTitle         String?
-  seoDescription   String?
-  seoKeywords      String?
+  seoTitle          String?
+  seoDescription    String?
+  seoKeywords       String?
   // Restock notifications
-  notifyRequests   RestockNotify[]
-  orderItems       OrderItem[]
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  notifyRequests    RestockNotify[]
+  orderItems        OrderItem[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([categoryId])
   @@index([featuredOnHome])
@@ -75,21 +75,21 @@ model Product {
 }
 
 model ProductImage {
-  id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  url        String
-  altText    String   @default("")
-  sortOrder  Int      @default(0)
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String  @default("")
+  sortOrder Int     @default(0)
 }
 
 model RestockNotify {
-  id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  email      String
-  notified   Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  email     String
+  notified  Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   @@index([productId])
 }
@@ -110,11 +110,11 @@ model Order {
 }
 
 model OrderItem {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   orderId      String
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId    String
-  product      Product  @relation(fields: [productId], references: [id])
+  product      Product @relation(fields: [productId], references: [id])
   nameSnapshot String
   priceCents   Int
   quantity     Int
@@ -128,19 +128,36 @@ model AdminUser {
 }
 
 model SiteSettings {
-  id                 String   @id @default("site")
-  brandName          String   @default("Lotus Pro Decks")
-  logoWideUrl        String   @default("/logo/logo-wide.svg")
-  logoSquareUrl      String   @default("/logo/logo-square.svg")
-  heroBannerUrl      String?
-  heroEyebrow        String   @default("Expert-Built · Limited Runs · Every Major TCG")
-  heroTitle          String   @default("Your Store for MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
-  heroDescription    String   @default("Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more — shipped fast with a flat $5.99 rate, free over $150.")
-  heroPrimaryLabel   String   @default("Shop Magic")
-  heroPrimaryHref    String   @default("/category/magic-the-gathering")
-  heroSecondaryLabel String   @default("View Featured")
-  heroSecondaryHref  String   @default("/#featured-right-now")
-  footerDescription  String   @default("Sealed product, singles, and pro-built decks for Magic, Pokemon, One Piece, Riftbound, and Weiss Schwarz.")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                          String   @id @default("site")
+  brandName                   String   @default("Lotus Pro Decks")
+  logoWideUrl                 String   @default("/logo/logo-wide.svg")
+  logoSquareUrl               String   @default("/logo/logo-square.svg")
+  heroBannerUrl               String?
+  heroEyebrow                 String   @default("Expert-Built - Limited Runs - Every Major TCG")
+  heroTitle                   String   @default("Your Store for MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
+  heroDescription             String   @default("Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more - shipped fast with a flat $5.99 rate, free over $150.")
+  heroPrimaryLabel            String   @default("Shop Magic")
+  heroPrimaryHref             String   @default("/category/magic-the-gathering")
+  heroSecondaryLabel          String   @default("View Featured")
+  heroSecondaryHref           String   @default("/#featured-right-now")
+  featuredSectionTitle        String   @default("Featured Right Now")
+  siteMetaTitle               String   @default("Lotus Pro Decks | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
+  siteMetaDescription         String   @default("Sealed product, singles, and pro-built decks for Magic the Gathering, Pokemon, One Piece, Riftbound, and Weiss Schwarz.")
+  footerDescription           String   @default("Sealed product, singles, and pro-built decks for Magic, Pokemon, One Piece, Riftbound, and Weiss Schwarz.")
+  footerShopHeading           String   @default("Shop")
+  footerSupportHeading        String   @default("Support")
+  footerShippingHeading       String   @default("Shipping")
+  footerContactLabel          String   @default("Contact Us")
+  footerContactHref           String   @default("/contact")
+  footerShippingLabel         String   @default("Shipping & Returns")
+  footerShippingHref          String   @default("/shipping")
+  footerFaqLabel              String   @default("FAQ")
+  footerFaqHref               String   @default("/faq")
+  footerShippingLinePrimary   String   @default("Flat rate: $5.99 on every order.")
+  footerShippingLineHighlight String   @default("Free shipping on orders over $150.")
+  footerLegalText             String   @default("Copyright {year} {brandName}. Not affiliated with Wizards of the Coast, Pokemon Company, Bandai, Riot Games, or Bushiroad.")
+  footerBottomPromoLeft       String   @default("$5.99 flat shipping")
+  footerBottomPromoRight      String   @default("Free shipping over $150")
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 }
