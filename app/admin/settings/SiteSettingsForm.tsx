@@ -149,7 +149,7 @@ function getSuccessMessage(deploy?: { triggered?: boolean; reason?: string; deta
   }
 
   if (deploy?.reason === "failed") {
-    return `Site settings saved and are live on refresh. The Netlify rebuild hook did not run: ${deploy.detail ?? "unknown error."}`;
+    return `Site settings saved and are live on refresh. A deployment hook did not run: ${deploy.detail ?? "unknown error."}`;
   }
 
   return "Site settings saved. These changes are live on refresh because the storefront reads them from the database.";
@@ -814,8 +814,7 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
               {saving ? "Saving..." : dirty ? "Save Site Settings" : "All Changes Saved"}
             </button>
             <p className="mt-3 text-xs text-gray-500">
-              If <code>NETLIFY_BUILD_HOOK_URL</code> is configured in Netlify, each save will also
-              queue a production rebuild automatically.
+              Site settings save to the live database and appear on the storefront after refresh.
             </p>
           </div>
         </div>

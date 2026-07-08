@@ -71,8 +71,7 @@ skip it, or paid orders will sit at status `pending` forever.
 
 1. Push this repo to GitHub and import it into [Vercel](https://vercel.com).
 2. Provision a Postgres database (Neon, Supabase, or Vercel Postgres all work) and set
-   `DATABASE_URL` to its connection string in Vercel's environment variables. Change
-   `provider = "sqlite"` to `provider = "postgresql"` in `prisma/schema.prisma` first.
+   `DATABASE_URL` to its connection string in Vercel's environment variables.
 3. Set all the same environment variables from the table above in Vercel, using your
    **live** Stripe keys once you're ready to accept real payments.
 4. Add a Stripe webhook endpoint pointing at
@@ -80,16 +79,11 @@ skip it, or paid orders will sit at status `pending` forever.
    event, and put its signing secret in `STRIPE_WEBHOOK_SECRET`.
 5. Point your `lotusprodecks.com` DNS at Vercel.
 
-### Netlify live deploy commands
+### Scheduled TCGPlayer sync
 
-This workspace is linked to Netlify, so you can publish straight from here:
-
-```bash
-npm run deploy:preview
-npm run deploy:prod
-```
-
-`deploy:prod` pushes the current workspace live to `lotusprotcg.com`.
+The recurring TCGPlayer price sync now runs through GitHub Actions every 2 hours.
+Add `DATABASE_URL` as a GitHub Actions secret so the workflow can update tracked
+products from TCGPlayer.
 
 ## Adding products & categories
 

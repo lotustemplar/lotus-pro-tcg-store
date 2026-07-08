@@ -7,12 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy:preview": "npx netlify-cli deploy --build",
-    "deploy:prod": "npx netlify-cli deploy --prod --build",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
+    "sync:tcgplayer": "tsx scripts/tcgplayer-price-sync.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

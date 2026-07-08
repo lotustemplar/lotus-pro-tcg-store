@@ -2,7 +2,6 @@ import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth";
-import { triggerNetlifyBuildHook } from "@/lib/netlify-build-hook";
 import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_SITE_SETTINGS,
@@ -83,7 +82,12 @@ export async function PUT(req: NextRequest) {
   revalidatePath("/");
   revalidatePath("/admin/settings");
 
-  const deploy = await triggerNetlifyBuildHook();
-
-  return NextResponse.json({ ok: true, deploy });
+  return NextResponse.json({
+    ok: true,
+    deploy: {
+      triggered: false,
+      reason: "not-needed",
+      detail: "Site settings are stored in the database and go live on refresh.",
+    },
+  });
 }
