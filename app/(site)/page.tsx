@@ -42,26 +42,28 @@ export default async function HomePage() {
   return (
     <div className="space-y-0">
       <section className="relative left-1/2 w-screen -translate-x-1/2 border-b border-white/8 bg-[#090d16]">
-        <div className="mx-auto max-w-[1500px] px-4 py-0">
+        <div className="mx-auto max-w-[1500px] px-0 sm:px-4 sm:py-0">
           <HeroBannerCarousel slides={settings.heroSlides} brandName={settings.brandName} />
         </div>
       </section>
 
       <section className="relative left-1/2 w-screen -translate-x-1/2 border-b border-white/8 bg-[#0a0e17]">
-        <div className="mx-auto grid max-w-[1500px] gap-0 px-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-px bg-white/8 px-0 sm:px-4 xl:grid-cols-4">
           {FEATURE_STRIP.map((item) => (
             <div
               key={item.title}
-              className="flex items-center gap-4 border-b border-white/8 px-4 py-4 sm:px-5 sm:py-5 md:border-r xl:border-b-0"
+              className="flex min-h-[138px] flex-col justify-between bg-[#0a0e17] px-4 py-4 sm:min-h-[148px] sm:px-5 sm:py-5"
             >
-              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-brand-400/40 bg-brand-500/10 text-2xl">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-400/40 bg-brand-500/10 text-2xl">
                 {item.icon}
               </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white sm:text-xs sm:tracking-[0.2em]">
+              <div className="pt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white sm:text-xs sm:tracking-[0.18em]">
                   {item.title}
                 </p>
-                <p className="text-sm leading-6 text-gray-400">{item.description}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-400 sm:text-sm sm:leading-6">
+                  {item.description}
+                </p>
               </div>
             </div>
           ))}

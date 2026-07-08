@@ -25,30 +25,33 @@ export function HeroBannerCarousel({
 
   if (slides.length === 0) {
     return (
-      <div className="relative min-h-[280px] overflow-hidden rounded-none bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.45),rgba(9,13,22,1)_68%)] lg:min-h-[520px]" />
+      <div className="relative aspect-[4/3] overflow-hidden rounded-none bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.45),rgba(9,13,22,1)_68%)] sm:min-h-[280px] sm:aspect-auto lg:min-h-[520px]" />
     );
   }
 
   return (
-    <div className="relative min-h-[280px] overflow-hidden rounded-none lg:min-h-[520px]">
+    <div className="relative aspect-[4/3] overflow-hidden rounded-none bg-[#120f1d] sm:min-h-[280px] sm:aspect-auto lg:min-h-[520px]">
       <div
         className="flex h-full transition-transform duration-700 ease-out"
         style={{ transform: `translateX(-${activeIndex * 100}%)` }}
       >
         {slides.map((slide) => (
-          <div key={slide.id} className="relative min-h-[280px] w-full flex-none lg:min-h-[520px]">
+          <div
+            key={slide.id}
+            className="relative aspect-[4/3] w-full flex-none sm:min-h-[280px] sm:aspect-auto lg:min-h-[520px]"
+          >
             {slide.imageUrl ? (
               <img
                 src={slide.imageUrl}
                 alt={`${brandName} ${slide.name}`}
-                className="absolute inset-0 h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-contain sm:object-cover"
               />
             ) : null}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.12),rgba(9,13,22,0.28))]" />
-            <div className="absolute bottom-6 left-6 sm:bottom-8 sm:left-8 lg:bottom-10 lg:left-10">
+            <div className="absolute bottom-4 left-4 sm:bottom-8 sm:left-8 lg:bottom-10 lg:left-10">
               <Link
                 href={slide.buttonHref}
-                className="inline-flex rounded-md border border-brand-300/70 bg-black/35 px-6 py-3 text-sm font-semibold uppercase tracking-[0.22em] text-white shadow-[0_0_0_1px_rgba(196,181,253,0.18),0_0_22px_rgba(139,92,246,0.45)] backdrop-blur-sm transition hover:border-white hover:bg-brand-700/40 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_0_28px_rgba(139,92,246,0.58)]"
+                className="inline-flex rounded-md border border-brand-300/70 bg-black/35 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-[0_0_0_1px_rgba(196,181,253,0.18),0_0_22px_rgba(139,92,246,0.45)] backdrop-blur-sm transition hover:border-white hover:bg-brand-700/40 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_0_28px_rgba(139,92,246,0.58)] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
               >
                 {slide.buttonLabel}
               </Link>
