@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { SiteSettings } from "@/lib/site-settings";
+import { CATEGORY_TREE } from "@/lib/categories";
+import type { HeroSlide, SiteSettings } from "@/lib/site-settings";
 
 type Message = {
   type: "error" | "success";
@@ -12,19 +13,22 @@ type SiteSettingsFormProps = {
   initial: SiteSettings;
 };
 
-type AssetFieldKey = "logoWideUrl" | "logoSquareUrl" | "heroBannerUrl";
+type BrandAssetKey = "logoWideUrl" | "logoSquareUrl";
 
 const MAX_SOURCE_FILE_BYTES = 8 * 1024 * 1024;
+const HOMEPAGE_CATEGORY_SPECS = CATEGORY_TREE.slice(0, 5).map((category) => ({
+  slug: category.slug,
+  label: category.name,
+}));
 
-const ASSET_FIELDS: Record<
-  AssetFieldKey,
+const BRAND_ASSETS: Record<
+  BrandAssetKey,
   {
     label: string;
     ratioClassName: string;
     maxWidth: number;
     maxHeight: number;
     helperText: string;
-    optional?: boolean;
   }
 > = {
   logoWideUrl: {
@@ -40,14 +44,6 @@ const ASSET_FIELDS: Record<
     maxWidth: 800,
     maxHeight: 800,
     helperText: "Best as a square export around 800 x 800.",
-  },
-  heroBannerUrl: {
-    label: "Hero Banner",
-    ratioClassName: "aspect-[12/5]",
-    maxWidth: 1920,
-    maxHeight: 800,
-    helperText: "Best as a wide banner around 1920 x 800.",
-    optional: true,
   },
 };
 
@@ -116,7 +112,6 @@ async function prepareAssetFile(
   }
 
   const originalDataUrl = await readFileAsDataUrl(file);
-
   if (file.type === "image/svg+xml") {
     return originalDataUrl;
   }
@@ -132,16 +127,15 @@ async function prepareAssetFile(
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-
   const context = canvas.getContext("2d");
   if (!context) {
     throw new Error("Image compression is not available in this browser.");
   }
 
   context.drawImage(image, 0, 0, width, height);
-
   const outputType = file.type === "image/png" ? "image/png" : "image/webp";
   const output = canvas.toDataURL(outputType, outputType === "image/webp" ? 0.92 : undefined);
+
   if (!output || output === "data:,") {
     throw new Error("Failed to prepare the selected image.");
   }
@@ -161,11 +155,21 @@ function getSuccessMessage(deploy?: { triggered?: boolean; reason?: string; deta
   return "Site settings saved. These changes are live on refresh because the storefront reads them from the database.";
 }
 
+function createSlide(index: number): HeroSlide {
+  return {
+    id: `slide-${Date.now()}-${index}`,
+    name: `Slide ${index + 1}`,
+    imageUrl: null,
+    buttonLabel: "Shop Now",
+    buttonHref: "/",
+  };
+}
+
 export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
   const [values, setValues] = useState<SiteSettings>(initial);
   const [savedValues, setSavedValues] = useState<SiteSettings>(initial);
   const [saving, setSaving] = useState(false);
-  const [uploadingAsset, setUploadingAsset] = useState<AssetFieldKey | null>(null);
+  const [uploadingAsset, setUploadingAsset] = useState<string | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
 
   const dirty = useMemo(() => JSON.stringify(values) !== JSON.stringify(savedValues), [savedValues, values]);
@@ -175,15 +179,84 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
     setMessage(null);
   }
 
-  async function handleAssetUpload(key: AssetFieldKey, file: File | null) {
+  function updateSlide(index: number, patch: Partial<HeroSlide>) {
+    setValues((current) => ({
+      ...current,
+      heroSlides: current.heroSlides.map((slide, slideIndex) =>
+        slideIndex === index ? { ...slide, ...patch } : slide,
+      ),
+    }));
+    setMessage(null);
+  }
+
+  function addSlide() {
+    setValues((current) => ({
+      ...current,
+      heroSlides: [...current.heroSlides, createSlide(current.heroSlides.length)],
+    }));
+    setMessage(null);
+  }
+
+  function removeSlide(index: number) {
+    setValues((current) => ({
+      ...current,
+      heroSlides: current.heroSlides.filter((_, slideIndex) => slideIndex !== index),
+    }));
+    setMessage(null);
+  }
+
+  async function handleBrandAssetUpload(key: BrandAssetKey, file: File | null) {
     if (!file) return;
 
     setUploadingAsset(key);
     setMessage(null);
 
     try {
-      const dataUrl = await prepareAssetFile(file, ASSET_FIELDS[key]);
+      const dataUrl = await prepareAssetFile(file, BRAND_ASSETS[key]);
       update(key, dataUrl as SiteSettings[typeof key]);
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to prepare that image.",
+      });
+    } finally {
+      setUploadingAsset(null);
+    }
+  }
+
+  async function handleSlideUpload(index: number, file: File | null) {
+    if (!file) return;
+
+    const uploadKey = `hero-slide-${index}`;
+    setUploadingAsset(uploadKey);
+    setMessage(null);
+
+    try {
+      const dataUrl = await prepareAssetFile(file, { maxWidth: 1920, maxHeight: 900 });
+      updateSlide(index, { imageUrl: dataUrl });
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to prepare that image.",
+      });
+    } finally {
+      setUploadingAsset(null);
+    }
+  }
+
+  async function handleCategoryBackgroundUpload(slug: string, file: File | null) {
+    if (!file) return;
+
+    const uploadKey = `category-${slug}`;
+    setUploadingAsset(uploadKey);
+    setMessage(null);
+
+    try {
+      const dataUrl = await prepareAssetFile(file, { maxWidth: 1200, maxHeight: 800 });
+      update("categoryBackgrounds", {
+        ...values.categoryBackgrounds,
+        [slug]: dataUrl,
+      });
     } catch (error) {
       setMessage({
         type: "error",
@@ -220,14 +293,15 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
     setSaving(false);
   }
 
+  const firstSlide = values.heroSlides[0] ?? null;
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-bg-panel p-5">
         <p className="font-display text-xl font-bold text-white">Storefront Controls</p>
         <p className="mt-2 max-w-3xl text-sm text-gray-400">
-          Update the live storefront from here: logos, hero banner, homepage copy, footer text, and
-          SEO text. You can paste image URLs or upload files directly. Uploaded images are compressed
-          in the browser and stored with your site settings, so they stay live across Netlify deploys.
+          Manage the top banner carousel, slide button text and links, logos, category backgrounds,
+          homepage copy, and footer content from one place.
         </p>
       </div>
 
@@ -255,8 +329,8 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                 />
               </label>
 
-              {(["logoWideUrl", "logoSquareUrl", "heroBannerUrl"] as AssetFieldKey[]).map((key) => {
-                const asset = ASSET_FIELDS[key];
+              {(["logoWideUrl", "logoSquareUrl"] as BrandAssetKey[]).map((key) => {
+                const asset = BRAND_ASSETS[key];
                 const currentValue = values[key];
 
                 return (
@@ -266,15 +340,6 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                         <p className="text-sm font-semibold text-white">{asset.label}</p>
                         <p className="text-xs text-gray-400">{asset.helperText}</p>
                       </div>
-                      {asset.optional && (
-                        <button
-                          type="button"
-                          onClick={() => update(key, null as SiteSettings[typeof key])}
-                          className="rounded-md border border-border px-3 py-1.5 text-xs text-gray-300 hover:bg-bg"
-                        >
-                          Remove
-                        </button>
-                      )}
                     </div>
 
                     <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_220px]">
@@ -282,18 +347,8 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                         <label className="space-y-2">
                           <span className="text-sm font-semibold text-gray-200">{asset.label} URL</span>
                           <input
-                            value={currentValue ?? ""}
-                            onChange={(event) =>
-                              update(
-                                key,
-                                ((key === "heroBannerUrl" && event.target.value.length === 0)
-                                  ? null
-                                  : event.target.value) as SiteSettings[typeof key],
-                              )
-                            }
-                            placeholder={
-                              asset.optional ? "Optional - paste a URL or upload a file" : "Paste a URL or upload a file"
-                            }
+                            value={currentValue}
+                            onChange={(event) => update(key, event.target.value as SiteSettings[typeof key])}
                             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                           />
                         </label>
@@ -303,7 +358,7 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(event) => void handleAssetUpload(key, event.target.files?.[0] ?? null)}
+                            onChange={(event) => void handleBrandAssetUpload(key, event.target.files?.[0] ?? null)}
                             className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-md file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-brand-500"
                           />
                         </label>
@@ -322,8 +377,215 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
           </section>
 
           <section className="rounded-xl border border-border bg-bg-panel p-5">
-            <h2 className="font-display text-lg font-bold text-white">SEO & Browser Text</h2>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-bold text-white">Top Banner Carousel</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  Each slide gets its own image, button text, and destination link.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addSlide}
+                className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500"
+              >
+                Add Slide
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {values.heroSlides.length === 0 && (
+                <div className="rounded-lg border border-dashed border-border bg-bg-elevated px-4 py-5 text-sm text-gray-400">
+                  No banner slides yet. Add your first banner to start the rotating carousel.
+                </div>
+              )}
+
+              {values.heroSlides.map((slide, index) => (
+                <div key={slide.id} className="rounded-xl border border-border bg-bg-elevated p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-white">Slide {index + 1}</p>
+                    <button
+                      type="button"
+                      onClick={() => removeSlide(index)}
+                      className="rounded-md border border-border px-3 py-1.5 text-xs text-gray-300 hover:bg-bg"
+                    >
+                      Remove Slide
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_280px]">
+                    <div className="space-y-3">
+                      <label className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-200">Slide Name</span>
+                        <input
+                          value={slide.name}
+                          onChange={(event) => updateSlide(index, { name: event.target.value })}
+                          className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                        />
+                      </label>
+
+                      <label className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-200">Banner Image URL</span>
+                        <input
+                          value={slide.imageUrl ?? ""}
+                          onChange={(event) => updateSlide(index, { imageUrl: event.target.value || null })}
+                          placeholder="Paste a banner image URL or upload a file"
+                          className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-semibold text-gray-200">Upload Banner Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => void handleSlideUpload(index, event.target.files?.[0] ?? null)}
+                          className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-md file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-brand-500"
+                        />
+                      </label>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <label className="space-y-2">
+                          <span className="text-sm font-semibold text-gray-200">Button Text</span>
+                          <input
+                            value={slide.buttonLabel}
+                            onChange={(event) => updateSlide(index, { buttonLabel: event.target.value })}
+                            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                          />
+                        </label>
+                        <label className="space-y-2">
+                          <span className="text-sm font-semibold text-gray-200">Button Link</span>
+                          <input
+                            value={slide.buttonHref}
+                            onChange={(event) => updateSlide(index, { buttonHref: event.target.value })}
+                            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                          />
+                        </label>
+                      </div>
+
+                      {uploadingAsset === `hero-slide-${index}` && (
+                        <p className="text-xs text-brand-300">Preparing image...</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Slide Preview</p>
+                      <div className="overflow-hidden rounded-xl border border-border bg-bg">
+                        <div className="relative aspect-[12/5] w-full">
+                          {slide.imageUrl ? (
+                            <img src={slide.imageUrl} alt={slide.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
+                              No banner yet
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.12),rgba(9,13,22,0.32))]" />
+                          <div className="absolute bottom-3 left-3">
+                            <span className="inline-flex rounded-md border border-brand-300/70 bg-black/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[0_0_18px_rgba(139,92,246,0.45)]">
+                              {slide.buttonLabel}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border bg-bg-panel p-5">
+            <h2 className="font-display text-lg font-bold text-white">Category Block Backgrounds</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              Set the background image for the Magic, Pokemon, One Piece, Riftbound, and Weiss Schwarz homepage tiles.
+            </p>
+
+            <div className="mt-4 space-y-4">
+              {HOMEPAGE_CATEGORY_SPECS.map((category) => {
+                const currentValue = values.categoryBackgrounds[category.slug] ?? null;
+
+                return (
+                  <div key={category.slug} className="rounded-xl border border-border bg-bg-elevated p-4">
+                    <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{category.label}</p>
+                          <p className="text-xs text-gray-400">Recommended around 1200 x 800.</p>
+                        </div>
+
+                        <label className="space-y-2">
+                          <span className="text-sm font-semibold text-gray-200">Background Image URL</span>
+                          <input
+                            value={currentValue ?? ""}
+                            onChange={(event) =>
+                              update("categoryBackgrounds", {
+                                ...values.categoryBackgrounds,
+                                [category.slug]: event.target.value || null,
+                              })
+                            }
+                            placeholder="Paste a background URL or upload a file"
+                            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                          />
+                        </label>
+
+                        <div className="flex flex-wrap gap-3">
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-semibold text-gray-200">Upload Background</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) =>
+                                void handleCategoryBackgroundUpload(category.slug, event.target.files?.[0] ?? null)
+                              }
+                              className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-md file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-brand-500"
+                            />
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              update("categoryBackgrounds", {
+                                ...values.categoryBackgrounds,
+                                [category.slug]: null,
+                              })
+                            }
+                            className="self-end rounded-md border border-border px-3 py-2 text-xs text-gray-300 hover:bg-bg"
+                          >
+                            Remove Background
+                          </button>
+                        </div>
+
+                        {uploadingAsset === `category-${category.slug}` && (
+                          <p className="text-xs text-brand-300">Preparing image...</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Tile Preview</p>
+                        <AssetPreview
+                          label={category.label}
+                          src={currentValue}
+                          ratioClassName="aspect-[6/4]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border bg-bg-panel p-5">
+            <h2 className="font-display text-lg font-bold text-white">Homepage & SEO Text</h2>
             <div className="mt-4 grid gap-4">
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-gray-200">Featured Section Title</span>
+                <input
+                  value={values.featuredSectionTitle}
+                  onChange={(event) => update("featuredSectionTitle", event.target.value)}
+                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                />
+              </label>
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-200">Default Site Title</span>
                 <input
@@ -338,79 +600,6 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                   rows={3}
                   value={values.siteMetaDescription}
                   onChange={(event) => update("siteMetaDescription", event.target.value)}
-                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                />
-              </label>
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-border bg-bg-panel p-5">
-            <h2 className="font-display text-lg font-bold text-white">Homepage Hero</h2>
-            <div className="mt-4 grid gap-4">
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-gray-200">Eyebrow Text</span>
-                <input
-                  value={values.heroEyebrow}
-                  onChange={(event) => update("heroEyebrow", event.target.value)}
-                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-gray-200">Headline</span>
-                <input
-                  value={values.heroTitle}
-                  onChange={(event) => update("heroTitle", event.target.value)}
-                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-gray-200">Description</span>
-                <textarea
-                  rows={4}
-                  value={values.heroDescription}
-                  onChange={(event) => update("heroDescription", event.target.value)}
-                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                />
-              </label>
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="text-sm font-semibold text-gray-200">Primary Button Label</span>
-                  <input
-                    value={values.heroPrimaryLabel}
-                    onChange={(event) => update("heroPrimaryLabel", event.target.value)}
-                    className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-semibold text-gray-200">Primary Button Link</span>
-                  <input
-                    value={values.heroPrimaryHref}
-                    onChange={(event) => update("heroPrimaryHref", event.target.value)}
-                    className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-semibold text-gray-200">Secondary Button Label</span>
-                  <input
-                    value={values.heroSecondaryLabel}
-                    onChange={(event) => update("heroSecondaryLabel", event.target.value)}
-                    className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-semibold text-gray-200">Secondary Button Link</span>
-                  <input
-                    value={values.heroSecondaryHref}
-                    onChange={(event) => update("heroSecondaryHref", event.target.value)}
-                    className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                  />
-                </label>
-              </div>
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-gray-200">Featured Section Title</span>
-                <input
-                  value={values.featuredSectionTitle}
-                  onChange={(event) => update("featuredSectionTitle", event.target.value)}
                   className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                 />
               </label>
@@ -551,10 +740,6 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                   onChange={(event) => update("footerLegalText", event.target.value)}
                   className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                 />
-                <span className="text-xs text-gray-500">
-                  Use <code>{"{year}"}</code> and <code>{"{brandName}"}</code> if you want those
-                  values inserted automatically.
-                </span>
               </label>
             </div>
           </section>
@@ -569,32 +754,41 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                 <AssetPreview label="Wide logo" src={values.logoWideUrl} ratioClassName="aspect-[3/1]" />
               </div>
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Square Logo</p>
-                <AssetPreview
-                  label="Square logo"
-                  src={values.logoSquareUrl}
-                  ratioClassName="aspect-square max-w-[220px]"
-                />
-              </div>
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Hero Banner</p>
-                <AssetPreview label="Hero banner" src={values.heroBannerUrl} ratioClassName="aspect-[12/5]" />
-              </div>
-              <div className="rounded-xl border border-border bg-bg-elevated p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-400">
-                  {values.heroEyebrow}
-                </p>
-                <p className="mt-3 font-display text-2xl font-bold text-white">{values.heroTitle}</p>
-                <p className="mt-3 text-sm leading-6 text-gray-400">{values.heroDescription}</p>
-                <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                  <span className="rounded-full bg-brand-600 px-4 py-2 font-semibold text-white">
-                    {values.heroPrimaryLabel}
-                  </span>
-                  <span className="rounded-full border border-border px-4 py-2 text-gray-200">
-                    {values.heroSecondaryLabel}
-                  </span>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">First Banner Slide</p>
+                <div className="overflow-hidden rounded-xl border border-border bg-bg">
+                  <div className="relative aspect-[12/5] w-full">
+                    {firstSlide?.imageUrl ? (
+                      <img src={firstSlide.imageUrl} alt={firstSlide.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
+                        Add a slide to preview the hero carousel
+                      </div>
+                    )}
+                    {firstSlide?.imageUrl && (
+                      <>
+                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.12),rgba(9,13,22,0.32))]" />
+                        <div className="absolute bottom-4 left-4">
+                          <span className="inline-flex rounded-md border border-brand-300/70 bg-black/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[0_0_18px_rgba(139,92,246,0.45)]">
+                            {firstSlide.buttonLabel}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <p className="mt-4 text-sm font-semibold text-white">{values.featuredSectionTitle}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-bg-elevated p-4 text-sm">
+                <p className="font-semibold text-white">{values.featuredSectionTitle}</p>
+                <div className="mt-4 grid gap-3 text-gray-300">
+                  {HOMEPAGE_CATEGORY_SPECS.map((category) => (
+                    <div key={category.slug} className="flex items-center justify-between gap-3">
+                      <span>{category.label}</span>
+                      <span className="text-xs text-gray-500">
+                        {values.categoryBackgrounds[category.slug] ? "Background set" : "Using fallback image"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="rounded-xl border border-border bg-bg-elevated p-4 text-sm">
                 <p className="font-semibold text-white">{values.footerDescription}</p>
@@ -603,11 +797,8 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                     {values.footerSupportHeading}: {values.footerContactLabel}, {values.footerShippingLabel},{" "}
                     {values.footerFaqLabel}
                   </p>
-                  <p>
-                    {values.footerShippingHeading}: {values.footerShippingLinePrimary}
-                  </p>
+                  <p>{values.footerShippingHeading}: {values.footerShippingLinePrimary}</p>
                   <p className="text-brand-300">{values.footerShippingLineHighlight}</p>
-                  <p className="text-gray-500">{values.footerLegalText}</p>
                 </div>
               </div>
             </div>

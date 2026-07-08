@@ -133,6 +133,7 @@ model SiteSettings {
   logoWideUrl                 String   @default("/logo/logo-wide.svg")
   logoSquareUrl               String   @default("/logo/logo-square.svg")
   heroBannerUrl               String?
+  heroSlidesJson              String   @default("[]")
   heroEyebrow                 String   @default("Expert-Built - Limited Runs - Every Major TCG")
   heroTitle                   String   @default("Your Store for MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
   heroDescription             String   @default("Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more - shipped fast with a flat $5.99 rate, free over $150.")
@@ -140,6 +141,7 @@ model SiteSettings {
   heroPrimaryHref             String   @default("/category/magic-the-gathering")
   heroSecondaryLabel          String   @default("View Featured")
   heroSecondaryHref           String   @default("/#featured-right-now")
+  categoryBackgroundsJson     String   @default("{}")
   featuredSectionTitle        String   @default("Featured Right Now")
   siteMetaTitle               String   @default("Lotus Pro Decks | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
   siteMetaDescription         String   @default("Sealed product, singles, and pro-built decks for Magic the Gathering, Pokemon, One Piece, Riftbound, and Weiss Schwarz.")

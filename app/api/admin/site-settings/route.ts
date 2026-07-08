@@ -4,13 +4,27 @@ import { z } from "zod";
 import { getAdminSession } from "@/lib/auth";
 import { triggerNetlifyBuildHook } from "@/lib/netlify-build-hook";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_SITE_SETTINGS, SITE_SETTINGS_ID, mergeSiteSettings } from "@/lib/site-settings";
+import {
+  DEFAULT_SITE_SETTINGS,
+  SITE_SETTINGS_ID,
+  mergeSiteSettings,
+  serializeSiteSettingsForDb,
+} from "@/lib/site-settings";
+
+const heroSlideSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  imageUrl: z.string().nullable(),
+  buttonLabel: z.string().min(1),
+  buttonHref: z.string().min(1),
+});
 
 const siteSettingsSchema = z.object({
   brandName: z.string().min(1),
   logoWideUrl: z.string().min(1),
   logoSquareUrl: z.string().min(1),
   heroBannerUrl: z.string().nullable().optional(),
+  heroSlides: z.array(heroSlideSchema),
   heroEyebrow: z.string().min(1),
   heroTitle: z.string().min(1),
   heroDescription: z.string().min(1),
@@ -18,6 +32,7 @@ const siteSettingsSchema = z.object({
   heroPrimaryHref: z.string().min(1),
   heroSecondaryLabel: z.string().min(1),
   heroSecondaryHref: z.string().min(1),
+  categoryBackgrounds: z.record(z.string(), z.string().nullable()),
   featuredSectionTitle: z.string().min(1),
   siteMetaTitle: z.string().min(1),
   siteMetaDescription: z.string().min(1),
@@ -53,12 +68,14 @@ export async function PUT(req: NextRequest) {
     ...parsed.data,
   });
 
+  const dbData = serializeSiteSettingsForDb(data);
+
   await prisma.siteSettings.upsert({
     where: { id: SITE_SETTINGS_ID },
-    update: data,
+    update: dbData,
     create: {
       id: SITE_SETTINGS_ID,
-      ...data,
+      ...dbData,
     },
   });
 

@@ -2,11 +2,56 @@ import { prisma } from "./prisma";
 
 export const SITE_SETTINGS_ID = "site";
 
-export const DEFAULT_SITE_SETTINGS = {
+export type HeroSlide = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  buttonLabel: string;
+  buttonHref: string;
+};
+
+export type CategoryBackgroundMap = Record<string, string | null>;
+
+export type SiteSettings = {
+  brandName: string;
+  logoWideUrl: string;
+  logoSquareUrl: string;
+  heroBannerUrl: string | null;
+  heroSlides: HeroSlide[];
+  heroEyebrow: string;
+  heroTitle: string;
+  heroDescription: string;
+  heroPrimaryLabel: string;
+  heroPrimaryHref: string;
+  heroSecondaryLabel: string;
+  heroSecondaryHref: string;
+  categoryBackgrounds: CategoryBackgroundMap;
+  featuredSectionTitle: string;
+  siteMetaTitle: string;
+  siteMetaDescription: string;
+  footerDescription: string;
+  footerShopHeading: string;
+  footerSupportHeading: string;
+  footerShippingHeading: string;
+  footerContactLabel: string;
+  footerContactHref: string;
+  footerShippingLabel: string;
+  footerShippingHref: string;
+  footerFaqLabel: string;
+  footerFaqHref: string;
+  footerShippingLinePrimary: string;
+  footerShippingLineHighlight: string;
+  footerLegalText: string;
+  footerBottomPromoLeft: string;
+  footerBottomPromoRight: string;
+};
+
+export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   brandName: "Lotus Pro Decks",
   logoWideUrl: "/logo/logo-wide.svg",
   logoSquareUrl: "/logo/logo-square.svg",
-  heroBannerUrl: null as string | null,
+  heroBannerUrl: null,
+  heroSlides: [],
   heroEyebrow: "Expert-Built - Limited Runs - Every Major TCG",
   heroTitle: "Your Store for MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz",
   heroDescription:
@@ -15,6 +60,7 @@ export const DEFAULT_SITE_SETTINGS = {
   heroPrimaryHref: "/category/magic-the-gathering",
   heroSecondaryLabel: "View Featured",
   heroSecondaryHref: "/#featured-right-now",
+  categoryBackgrounds: {},
   featuredSectionTitle: "Featured Right Now",
   siteMetaTitle: "Lotus Pro Decks | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz",
   siteMetaDescription:
@@ -38,9 +84,15 @@ export const DEFAULT_SITE_SETTINGS = {
   footerBottomPromoRight: "Free shipping over $150",
 };
 
-export type SiteSettings = typeof DEFAULT_SITE_SETTINGS;
-
-type SiteSettingsRecord = Partial<SiteSettings> | null | undefined;
+type SiteSettingsRecord =
+  | (Partial<Omit<SiteSettings, "heroSlides" | "categoryBackgrounds">> & {
+      heroSlides?: HeroSlide[];
+      heroSlidesJson?: string | null;
+      categoryBackgrounds?: CategoryBackgroundMap;
+      categoryBackgroundsJson?: string | null;
+    })
+  | null
+  | undefined;
 
 function requiredValue(value: string | null | undefined, fallback: string) {
   const trimmed = value?.trim();
@@ -52,12 +104,78 @@ function optionalValue(value: string | null | undefined) {
   return trimmed && trimmed.length > 0 ? trimmed : null;
 }
 
+function parseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeHeroSlide(slide: Partial<HeroSlide> | null | undefined, index: number): HeroSlide | null {
+  const name = requiredValue(slide?.name, `Slide ${index + 1}`);
+  const buttonLabel = requiredValue(slide?.buttonLabel, "Shop Now");
+  const buttonHref = requiredValue(slide?.buttonHref, "/");
+  const imageUrl = optionalValue(slide?.imageUrl);
+
+  if (!imageUrl) return null;
+
+  return {
+    id: requiredValue(slide?.id, `slide-${index + 1}`),
+    name,
+    imageUrl,
+    buttonLabel,
+    buttonHref,
+  };
+}
+
+function resolveHeroSlides(record: SiteSettingsRecord): HeroSlide[] {
+  const slidesSource =
+    record?.heroSlides ??
+    parseJson<Partial<HeroSlide>[]>(record?.heroSlidesJson, []);
+
+  const normalized = slidesSource
+    .map((slide, index) => normalizeHeroSlide(slide, index))
+    .filter((slide): slide is HeroSlide => !!slide);
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  const legacyBanner = optionalValue(record?.heroBannerUrl);
+  if (!legacyBanner) {
+    return [];
+  }
+
+  return [
+    {
+      id: "legacy-slide-1",
+      name: "Hero Banner",
+      imageUrl: legacyBanner,
+      buttonLabel: requiredValue(record?.heroPrimaryLabel, DEFAULT_SITE_SETTINGS.heroPrimaryLabel),
+      buttonHref: requiredValue(record?.heroPrimaryHref, DEFAULT_SITE_SETTINGS.heroPrimaryHref),
+    },
+  ];
+}
+
+function resolveCategoryBackgrounds(record: SiteSettingsRecord): CategoryBackgroundMap {
+  const backgrounds =
+    record?.categoryBackgrounds ??
+    parseJson<CategoryBackgroundMap>(record?.categoryBackgroundsJson, {});
+
+  return Object.fromEntries(
+    Object.entries(backgrounds).map(([slug, value]) => [slug, optionalValue(value)]),
+  );
+}
+
 export function mergeSiteSettings(record: SiteSettingsRecord): SiteSettings {
   return {
     brandName: requiredValue(record?.brandName, DEFAULT_SITE_SETTINGS.brandName),
     logoWideUrl: requiredValue(record?.logoWideUrl, DEFAULT_SITE_SETTINGS.logoWideUrl),
     logoSquareUrl: requiredValue(record?.logoSquareUrl, DEFAULT_SITE_SETTINGS.logoSquareUrl),
     heroBannerUrl: optionalValue(record?.heroBannerUrl),
+    heroSlides: resolveHeroSlides(record),
     heroEyebrow: requiredValue(record?.heroEyebrow, DEFAULT_SITE_SETTINGS.heroEyebrow),
     heroTitle: requiredValue(record?.heroTitle, DEFAULT_SITE_SETTINGS.heroTitle),
     heroDescription: requiredValue(record?.heroDescription, DEFAULT_SITE_SETTINGS.heroDescription),
@@ -71,6 +189,7 @@ export function mergeSiteSettings(record: SiteSettingsRecord): SiteSettings {
       record?.heroSecondaryHref,
       DEFAULT_SITE_SETTINGS.heroSecondaryHref,
     ),
+    categoryBackgrounds: resolveCategoryBackgrounds(record),
     featuredSectionTitle: requiredValue(
       record?.featuredSectionTitle,
       DEFAULT_SITE_SETTINGS.featuredSectionTitle,
@@ -116,6 +235,42 @@ export function mergeSiteSettings(record: SiteSettingsRecord): SiteSettings {
       record?.footerBottomPromoRight,
       DEFAULT_SITE_SETTINGS.footerBottomPromoRight,
     ),
+  };
+}
+
+export function serializeSiteSettingsForDb(settings: SiteSettings) {
+  return {
+    brandName: settings.brandName,
+    logoWideUrl: settings.logoWideUrl,
+    logoSquareUrl: settings.logoSquareUrl,
+    heroBannerUrl: settings.heroBannerUrl,
+    heroSlidesJson: JSON.stringify(settings.heroSlides),
+    heroEyebrow: settings.heroEyebrow,
+    heroTitle: settings.heroTitle,
+    heroDescription: settings.heroDescription,
+    heroPrimaryLabel: settings.heroPrimaryLabel,
+    heroPrimaryHref: settings.heroPrimaryHref,
+    heroSecondaryLabel: settings.heroSecondaryLabel,
+    heroSecondaryHref: settings.heroSecondaryHref,
+    categoryBackgroundsJson: JSON.stringify(settings.categoryBackgrounds),
+    featuredSectionTitle: settings.featuredSectionTitle,
+    siteMetaTitle: settings.siteMetaTitle,
+    siteMetaDescription: settings.siteMetaDescription,
+    footerDescription: settings.footerDescription,
+    footerShopHeading: settings.footerShopHeading,
+    footerSupportHeading: settings.footerSupportHeading,
+    footerShippingHeading: settings.footerShippingHeading,
+    footerContactLabel: settings.footerContactLabel,
+    footerContactHref: settings.footerContactHref,
+    footerShippingLabel: settings.footerShippingLabel,
+    footerShippingHref: settings.footerShippingHref,
+    footerFaqLabel: settings.footerFaqLabel,
+    footerFaqHref: settings.footerFaqHref,
+    footerShippingLinePrimary: settings.footerShippingLinePrimary,
+    footerShippingLineHighlight: settings.footerShippingLineHighlight,
+    footerLegalText: settings.footerLegalText,
+    footerBottomPromoLeft: settings.footerBottomPromoLeft,
+    footerBottomPromoRight: settings.footerBottomPromoRight,
   };
 }
 

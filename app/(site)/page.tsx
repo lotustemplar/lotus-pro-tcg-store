@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Carousel } from "@/components/Carousel";
+import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
 import { StorefrontShelfCard } from "@/components/StorefrontShelfCard";
 import { getFeaturedProducts, getHomeCategoryPreviews, toCardProps } from "@/lib/products";
 import { getSiteSettings } from "@/lib/site-settings";
@@ -42,40 +43,7 @@ export default async function HomePage() {
     <div className="space-y-0">
       <section className="relative left-1/2 w-screen -translate-x-1/2 border-b border-white/8 bg-[#090d16]">
         <div className="mx-auto max-w-[1500px] px-4 py-0">
-          <div className="grid overflow-hidden rounded-none lg:grid-cols-[0.38fr_0.62fr]">
-            <div className="flex items-center bg-[linear-gradient(180deg,#0d1020,#090d16)] px-8 py-10 lg:px-10 xl:px-12">
-              <div className="max-w-lg">
-                <h1 className="font-display text-5xl font-semibold tracking-[-0.04em] text-white sm:text-6xl xl:text-7xl">
-                  {settings.brandName}
-                </h1>
-                <p className="mt-4 text-sm font-semibold uppercase tracking-[0.36em] text-gold">
-                  Premium Cards. Premier Experience.
-                </p>
-                <p className="mt-4 max-w-md text-xl leading-9 text-gray-300">
-                  Curated selections. Trusted source. Elevate your collection.
-                </p>
-                <Link
-                  href={settings.heroPrimaryHref}
-                  className="mt-8 inline-flex rounded-md bg-brand-700 px-6 py-3 text-base font-medium text-white transition hover:bg-brand-600"
-                >
-                  Shop Sealed
-                </Link>
-              </div>
-            </div>
-
-            <div className="relative min-h-[320px] overflow-hidden lg:min-h-[500px]">
-              {settings.heroBannerUrl ? (
-                <img
-                  src={settings.heroBannerUrl}
-                  alt={`${settings.brandName} banner`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              ) : (
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.45),rgba(9,13,22,1)_68%)]" />
-              )}
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,13,22,0.22),rgba(9,13,22,0.04))]" />
-            </div>
-          </div>
+          <HeroBannerCarousel slides={settings.heroSlides} brandName={settings.brandName} />
         </div>
       </section>
 
@@ -104,9 +72,9 @@ export default async function HomePage() {
               className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0d1220] shadow-[0_14px_34px_rgba(2,6,16,0.36)]"
             >
               <div className="absolute inset-0">
-                {category.image ? (
+                {settings.categoryBackgrounds[category.slug] || category.image ? (
                   <img
-                    src={category.image}
+                    src={settings.categoryBackgrounds[category.slug] || category.image || ""}
                     alt={category.name}
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
