@@ -10,6 +10,13 @@ export type ProductCardData = {
   images: { url: string }[];
 };
 
+export type HomeCategoryPreview = {
+  name: string;
+  slug: string;
+  image: string | null;
+  productCount: number;
+};
+
 export type CategoryWithChildren = {
   id: string;
   name: string;
@@ -75,5 +82,47 @@ export async function searchProducts(q: string): Promise<ProductCardData[]> {
       ],
     },
     include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+  });
+}
+
+export async function getHomeCategoryPreviews(limit = 5): Promise<HomeCategoryPreview[]> {
+  const categories = await prisma.category.findMany({
+    where: { parentId: null },
+    orderBy: { sortOrder: "asc" },
+    take: limit,
+    include: {
+      products: {
+        where: { isActive: true },
+        orderBy: [{ featuredOnHome: "desc" }, { createdAt: "desc" }],
+        take: 1,
+        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      },
+      children: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          products: {
+            where: { isActive: true },
+            orderBy: [{ featuredOnHome: "desc" }, { createdAt: "desc" }],
+            take: 1,
+            include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+          },
+        },
+      },
+    },
+  });
+
+  return categories.map((category) => {
+    const directImage = category.products[0]?.images[0]?.url ?? null;
+    const childWithImage = category.children.find((child) => child.products[0]?.images[0]?.url);
+    const image = directImage ?? childWithImage?.products[0]?.images[0]?.url ?? null;
+    const productCount =
+      category.products.length + category.children.reduce((sum, child) => sum + child.products.length, 0);
+
+    return {
+      name: category.name,
+      slug: category.slug,
+      image,
+      productCount,
+    };
   });
 }
