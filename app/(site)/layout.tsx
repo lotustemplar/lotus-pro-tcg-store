@@ -27,7 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-bg pb-14 text-white">
+      <body className="min-h-screen bg-bg pb-20 text-white sm:pb-14">
         <CartProvider>
           <Header categories={categories} settings={settings} />
           <main className="mx-auto min-h-[60vh] max-w-[1500px] px-4 py-8">{children}</main>

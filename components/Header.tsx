@@ -26,7 +26,7 @@ export function Header({
             <img
               src={settings.logoWideUrl}
               alt={settings.brandName}
-              className="h-10 w-auto object-contain md:h-12"
+              className="h-8 w-auto object-contain sm:h-10 md:h-12"
             />
           </Link>
 
@@ -97,7 +97,7 @@ export function Header({
               type="button"
               onClick={open}
               aria-label="Open cart"
-              className="relative rounded-lg border border-white/10 px-3 py-2 text-sm text-gray-300"
+              className="relative rounded-lg border border-white/10 px-3 py-2 text-sm text-gray-300 transition hover:bg-white/[0.04]"
             >
               Cart
               {itemCount > 0 && (
@@ -107,7 +107,7 @@ export function Header({
               )}
             </button>
             <button
-              className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white"
+              className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/[0.04]"
               onClick={() => setMobileOpen((value) => !value)}
               aria-label="Toggle menu"
             >
@@ -121,26 +121,26 @@ export function Header({
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-white/8 pb-4 pt-3 xl:hidden">
+          <div className="mt-2 rounded-2xl border border-white/8 bg-[#0b1020]/96 px-4 pb-20 pt-4 shadow-[0_20px_60px_rgba(2,6,16,0.45)] xl:hidden">
             {categories.map((category) => (
-              <div key={category.slug} className="mb-3 last:mb-0">
+              <div key={category.slug} className="mb-4 last:mb-0">
                 <Link
                   href={`/category/${category.slug}`}
                   className={
                     category.navStyle === "patreon"
-                      ? "text-sm font-semibold uppercase tracking-[0.18em] text-gold"
-                      : "text-sm font-semibold text-white"
+                      ? "text-sm font-semibold uppercase tracking-[0.14em] text-gold"
+                      : "text-base font-semibold text-white"
                   }
                 >
                   {category.name}
                 </Link>
                 {category.subs.length > 0 && (
-                  <div className="mt-2 space-y-2 pl-3">
+                  <div className="mt-2 space-y-1.5 pl-3">
                     {category.subs.map((sub) => (
                       <Link
                         key={sub.slug}
                         href={`/category/${category.slug}/${sub.slug}`}
-                        className="block text-xs uppercase tracking-[0.16em] text-gray-500"
+                        className="block text-[11px] uppercase leading-5 tracking-[0.12em] text-gray-400"
                       >
                         {sub.name}
                       </Link>

@@ -52,14 +52,16 @@ export default async function HomePage() {
           {FEATURE_STRIP.map((item) => (
             <div
               key={item.title}
-              className="flex items-center gap-4 border-b border-white/8 px-5 py-5 md:border-r xl:border-b-0"
+              className="flex items-center gap-4 border-b border-white/8 px-4 py-4 sm:px-5 sm:py-5 md:border-r xl:border-b-0"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-400/40 bg-brand-500/10 text-2xl">
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-brand-400/40 bg-brand-500/10 text-2xl">
                 {item.icon}
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white">{item.title}</p>
-                <p className="text-sm text-gray-400">{item.description}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white sm:text-xs sm:tracking-[0.2em]">
+                  {item.title}
+                </p>
+                <p className="text-sm leading-6 text-gray-400">{item.description}</p>
               </div>
             </div>
           ))}
@@ -87,7 +89,9 @@ export default async function HomePage() {
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.08),rgba(9,13,22,0.85))]" />
               </div>
               <div className="relative flex min-h-[210px] flex-col justify-end p-5">
-                <h2 className="font-display text-[2rem] font-medium text-white">{category.name}</h2>
+                <h2 className="font-display text-[1.75rem] font-medium text-white sm:text-[2rem]">
+                  {category.name}
+                </h2>
                 <div className="mt-3">
                   <span className="inline-flex rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white transition group-hover:bg-brand-600">
                     Shop Now
