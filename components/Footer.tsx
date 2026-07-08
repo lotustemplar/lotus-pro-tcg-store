@@ -116,8 +116,14 @@ export function Footer({
           </div>
         </div>
 
-        <div className="mt-8 border-t border-white/8 pt-4 text-xs text-gray-500">
-          {renderLegalText(settings.footerLegalText, settings.brandName)}
+        <div className="mt-8 border-t border-white/8 pt-4">
+          <div className="mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.24em] text-gray-300">
+            $5.99 Flat Rate Shipping and Free Shipping on All Orders Over $149 | Below Market Price
+            Guarantee on Most Products
+          </div>
+          <div className="text-xs text-gray-500">
+            {renderLegalText(settings.footerLegalText, settings.brandName)}
+          </div>
         </div>
       </div>
     </footer>
