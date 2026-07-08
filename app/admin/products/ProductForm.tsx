@@ -59,6 +59,32 @@ export type ProductFormValues = {
   images: ImageRow[];
 };
 
+function normalizeErrorMessage(error: unknown) {
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    const fieldErrors = "fieldErrors" in error ? (error as { fieldErrors?: Record<string, string[]> }).fieldErrors : undefined;
+    const formErrors = "formErrors" in error ? (error as { formErrors?: string[] }).formErrors : undefined;
+
+    const firstFieldError = fieldErrors
+      ? Object.values(fieldErrors).flat().find((message) => typeof message === "string" && message.trim().length > 0)
+      : undefined;
+
+    if (firstFieldError) {
+      return firstFieldError;
+    }
+
+    const firstFormError = formErrors?.find((message) => typeof message === "string" && message.trim().length > 0);
+    if (firstFormError) {
+      return firstFormError;
+    }
+  }
+
+  return "Failed to save product.";
+}
+
 export function ProductForm({
   categories,
   initial,
@@ -67,6 +93,7 @@ export function ProductForm({
   initial?: ProductFormValues;
 }) {
   const router = useRouter();
+  const hasCategories = categories.length > 0;
   const [values, setValues] = useState<ProductFormValues>(
     initial ?? {
       name: "",
@@ -175,6 +202,12 @@ export function ProductForm({
     setSaving(true);
     setError("");
 
+    if (!values.categoryId) {
+      setError("Choose a category before saving this product.");
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       ...values,
       images: values.images.filter((img) => img.url.trim().length > 0),
@@ -196,7 +229,7 @@ export function ProductForm({
     }
 
     const data = await res.json().catch(() => ({}));
-    setError(typeof data.error === "string" ? data.error : "Failed to save product.");
+    setError(normalizeErrorMessage(data.error));
     setSaving(false);
   }
 
@@ -323,14 +356,21 @@ export function ProductForm({
           <select
             value={values.categoryId}
             onChange={(e) => update("categoryId", e.target.value)}
+            disabled={!hasCategories}
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
           >
+            {!hasCategories && <option value="">No categories available yet</option>}
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
               </option>
             ))}
           </select>
+          {!hasCategories && (
+            <p className="mt-2 text-xs text-red-300">
+              Add at least one category in the admin categories page before creating products.
+            </p>
+          )}
         </div>
       </section>
 
@@ -512,7 +552,7 @@ export function ProductForm({
       <div className="flex gap-3">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || !hasCategories}
           className="rounded-lg bg-brand-600 px-6 py-3 font-semibold text-white hover:bg-brand-500 disabled:opacity-60"
         >
           {saving ? "Saving..." : initial?.id ? "Save Changes" : "Create Product"}

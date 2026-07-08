@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 const productSchema = z.object({
   name: z.string().min(1),
@@ -47,12 +48,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "A product with that slug already exists." }, { status: 400 });
   }
 
-  const product = await prisma.product.create({
-    data: {
-      ...data,
-      images: { create: images.map((img, idx) => ({ ...img, sortOrder: idx })) },
-    },
-  });
+  try {
+    const product = await prisma.product.create({
+      data: {
+        ...data,
+        images: { create: images.map((img, idx) => ({ ...img, sortOrder: idx })) },
+      },
+    });
 
-  return NextResponse.json({ ok: true, id: product.id });
+    return NextResponse.json({ ok: true, id: product.id });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return NextResponse.json({ error: "Choose a valid category before saving this product." }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: "Failed to create product." }, { status: 500 });
+  }
 }

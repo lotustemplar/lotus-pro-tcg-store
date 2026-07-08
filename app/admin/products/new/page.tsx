@@ -1,11 +1,11 @@
 import { ProductForm } from "../ProductForm";
-import { getAllCategoriesWithParent, toLeafOptions } from "@/lib/admin";
+import { getAllCategoriesWithParent, toAllOptions } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewProductPage() {
   const categories = await getAllCategoriesWithParent();
-  const options = toLeafOptions(categories);
+  const options = toAllOptions(categories);
 
   return (
     <div className="space-y-6">

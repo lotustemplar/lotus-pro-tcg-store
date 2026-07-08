@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 const productSchema = z.object({
   name: z.string().min(1),
@@ -64,18 +65,26 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "Another product already uses that slug." }, { status: 400 });
   }
 
-  await prisma.$transaction([
-    prisma.productImage.deleteMany({ where: { productId: params.id } }),
-    prisma.product.update({
-      where: { id: params.id },
-      data: {
-        ...data,
-        images: { create: images.map((img, idx) => ({ ...img, sortOrder: idx })) },
-      },
-    }),
-  ]);
+  try {
+    await prisma.$transaction([
+      prisma.productImage.deleteMany({ where: { productId: params.id } }),
+      prisma.product.update({
+        where: { id: params.id },
+        data: {
+          ...data,
+          images: { create: images.map((img, idx) => ({ ...img, sortOrder: idx })) },
+        },
+      }),
+    ]);
 
-  return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return NextResponse.json({ error: "Choose a valid category before saving this product." }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: "Failed to update product." }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
