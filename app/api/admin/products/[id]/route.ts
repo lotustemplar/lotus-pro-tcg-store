@@ -31,6 +31,28 @@ const productSchema = z.object({
   images: z.array(z.object({ url: z.string().min(1), altText: z.string().default("") })).default([]),
 });
 
+function emptyStringToNull(value: string | null | undefined) {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeProductInput(data: z.infer<typeof productSchema>) {
+  return {
+    ...data,
+    sourceMarketplace: emptyStringToNull(data.sourceMarketplace),
+    sourceUrl: emptyStringToNull(data.sourceUrl),
+    sourceProductLine: emptyStringToNull(data.sourceProductLine),
+    sourceSetName: emptyStringToNull(data.sourceSetName),
+    sourceProductType: emptyStringToNull(data.sourceProductType),
+    sourceImageUrl: emptyStringToNull(data.sourceImageUrl),
+    sku: emptyStringToNull(data.sku),
+    seoTitle: emptyStringToNull(data.seoTitle),
+    seoDescription: emptyStringToNull(data.seoDescription),
+    seoKeywords: emptyStringToNull(data.seoKeywords),
+  };
+}
+
 const inlineProductSchema = z
   .object({
     name: z.string().min(1).optional(),
@@ -56,7 +78,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { images, ...data } = parsed.data;
+  const normalized = normalizeProductInput(parsed.data);
+  const { images, ...data } = normalized;
 
   const dupe = await prisma.product.findFirst({
     where: { slug: data.slug, NOT: { id: params.id } },
@@ -79,6 +102,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const target = Array.isArray(error.meta?.target) ? error.meta.target.join(", ") : "a unique field";
+      return NextResponse.json({ error: `A product already uses ${target}.` }, { status: 400 });
+    }
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
       return NextResponse.json({ error: "Choose a valid category before saving this product." }, { status: 400 });
     }
