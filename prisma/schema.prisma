@@ -1,0 +1,146 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---- Category tree -------------------------------------------------
+// Top-level categories are the main menu (Magic, Pokemon, One Piece, Riftbound,
+// Weiss Schwarz, Accessories, Patreon Access). Subcategories are the dropdown
+// items under each (Sealed Cases / Booster Boxes / Booster Packs, plus the
+// Magic-only Commander Deck + Secret Lairs subcategories).
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String
+  isTopLevel  Boolean    @default(false)
+  // visual treatment flag - e.g. "Patreon Access" renders in gold/gradient nav styling
+  navStyle    String     @default("default") // "default" | "patreon"
+  sortOrder   Int        @default(0)
+  parentId    String?
+  parent      Category?  @relation("CategoryToSub", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryToSub")
+  products    Product[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // subcategory slugs (e.g. "booster-boxes") repeat across parents, so
+  // uniqueness is scoped per-parent rather than global
+  @@unique([parentId, slug])
+}
+
+model Product {
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique
+  description      String    @default("")
+  priceCents       Int
+  sourceMarketplace String?
+  sourceUrl         String?
+  sourceProductId   Int?
+  sourceProductLine String?
+  sourceSetName     String?
+  sourceProductType String?
+  sourcePriceCents  Int?
+  sourceImageUrl    String?
+  autoUpdatePrice   Boolean   @default(false)
+  lastSyncedAt      DateTime?
+  lastSyncError     String?
+  compareAtCents   Int?
+  sku              String?   @unique
+  quantity         Int       @default(0)
+  images           ProductImage[]
+  categoryId       String
+  category         Category  @relation(fields: [categoryId], references: [id])
+  featuredOnHome   Boolean   @default(false)
+  featuredOrder    Int       @default(0)
+  isActive         Boolean   @default(true)
+  // SEO
+  seoTitle         String?
+  seoDescription   String?
+  seoKeywords      String?
+  // Restock notifications
+  notifyRequests   RestockNotify[]
+  orderItems       OrderItem[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([categoryId])
+  @@index([featuredOnHome])
+  @@index([sourceMarketplace, sourceProductId])
+}
+
+model ProductImage {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url        String
+  altText    String   @default("")
+  sortOrder  Int      @default(0)
+}
+
+model RestockNotify {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  email      String
+  notified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+}
+
+model Order {
+  id                  String      @id @default(cuid())
+  stripeSessionId     String?     @unique
+  stripePaymentIntent String?
+  email               String
+  status              String      @default("pending") // pending | paid | fulfilled | cancelled
+  subtotalCents       Int
+  shippingCents       Int
+  totalCents          Int
+  shippingAddress     String?     // JSON blob
+  items               OrderItem[]
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  nameSnapshot String
+  priceCents   Int
+  quantity     Int
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model SiteSettings {
+  id                 String   @id @default("site")
+  brandName          String   @default("Lotus Pro Decks")
+  logoWideUrl        String   @default("/logo/logo-wide.svg")
+  logoSquareUrl      String   @default("/logo/logo-square.svg")
+  heroBannerUrl      String?
+  heroEyebrow        String   @default("Expert-Built · Limited Runs · Every Major TCG")
+  heroTitle          String   @default("Your Store for MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
+  heroDescription    String   @default("Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more — shipped fast with a flat $5.99 rate, free over $150.")
+  heroPrimaryLabel   String   @default("Shop Magic")
+  heroPrimaryHref    String   @default("/category/magic-the-gathering")
+  heroSecondaryLabel String   @default("View Featured")
+  heroSecondaryHref  String   @default("/#featured-right-now")
+  footerDescription  String   @default("Sealed product, singles, and pro-built decks for Magic, Pokemon, One Piece, Riftbound, and Weiss Schwarz.")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

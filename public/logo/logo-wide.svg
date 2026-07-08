@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="600" height="200">
+  <defs>
+    <linearGradient id="petalGradW" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="90" fill="#0A0E1A" stroke="#7c3aed" stroke-width="3"/>
+  <g fill="url(#petalGradW)" stroke="#0A0E1A" stroke-width="1.5">
+    <path d="M100 40 C 108 70, 108 95, 100 120 C 92 95, 92 70, 100 40 Z"/>
+    <path d="M70 50 C 85 75, 95 98, 100 120 C 78 105, 62 85, 70 50 Z"/>
+    <path d="M130 50 C 115 75, 105 98, 100 120 C 122 105, 138 85, 130 50 Z"/>
+    <path d="M48 75 C 68 88, 85 102, 100 120 C 72 118, 48 108, 48 75 Z"/>
+    <path d="M152 75 C 132 88, 115 102, 100 120 C 128 118, 152 108, 152 75 Z"/>
+    <path d="M40 110 C 62 112, 82 118, 100 130 C 74 138, 46 138, 40 110 Z"/>
+    <path d="M160 110 C 138 112, 118 118, 100 130 C 126 138, 154 138, 160 110 Z"/>
+  </g>
+  <text x="220" y="110" font-family="Georgia, serif" font-size="64" font-weight="bold" fill="#ffffff" letter-spacing="2">LOTUS</text>
+  <text x="220" y="150" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#a78bfa" letter-spacing="6">PRO TCG</text>
+</svg>
