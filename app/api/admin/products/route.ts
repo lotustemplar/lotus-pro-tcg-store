@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
@@ -38,7 +39,7 @@ function emptyStringToNull(value: string | null | undefined) {
 }
 
 function normalizeProductInput(data: z.infer<typeof productSchema>) {
-  return {
+  const normalized = {
     ...data,
     sourceMarketplace: emptyStringToNull(data.sourceMarketplace),
     sourceUrl: emptyStringToNull(data.sourceUrl),
@@ -51,6 +52,22 @@ function normalizeProductInput(data: z.infer<typeof productSchema>) {
     seoDescription: emptyStringToNull(data.seoDescription),
     seoKeywords: emptyStringToNull(data.seoKeywords),
   };
+
+  if (normalized.sourceMarketplace === "tcgplayer") {
+    const pricing = applyTrackedTcgplayerPricing({
+      autoUpdatePrice: normalized.autoUpdatePrice,
+      priceCents: normalized.priceCents,
+      sourcePriceCents: normalized.sourcePriceCents,
+    });
+
+    return {
+      ...normalized,
+      compareAtCents: pricing.compareAtCents,
+      priceCents: pricing.priceCents,
+    };
+  }
+
+  return normalized;
 }
 
 export async function POST(req: NextRequest) {

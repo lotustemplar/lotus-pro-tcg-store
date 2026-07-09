@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { buildTcgplayerImageUrl, fetchTcgplayerProductDetails } from "./tcgplayer";
+import { applyTrackedTcgplayerPricing } from "./pricing";
 
 function toCents(price: number | null | undefined) {
   return Math.max(0, Math.round((price ?? 0) * 100));
@@ -36,11 +37,17 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
       const sourcePriceCents = toCents(
         details.lowestPriceWithShipping ?? details.lowestPrice ?? details.marketPrice ?? 0
       );
+      const pricing = applyTrackedTcgplayerPricing({
+        autoUpdatePrice: product.autoUpdatePrice,
+        priceCents: sourcePriceCents,
+        sourcePriceCents,
+      });
 
       await prisma.product.update({
         where: { id: product.id },
         data: {
-          priceCents: product.autoUpdatePrice ? sourcePriceCents : undefined,
+          compareAtCents: pricing.compareAtCents,
+          priceCents: product.autoUpdatePrice ? pricing.priceCents : undefined,
           sourcePriceCents,
           sourceImageUrl: buildTcgplayerImageUrl(product.sourceProductId, 1000),
           sourceProductLine: details.productLineName?.trim() ?? null,

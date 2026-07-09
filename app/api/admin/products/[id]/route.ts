@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
@@ -38,7 +39,7 @@ function emptyStringToNull(value: string | null | undefined) {
 }
 
 function normalizeProductInput(data: z.infer<typeof productSchema>) {
-  return {
+  const normalized = {
     ...data,
     sourceMarketplace: emptyStringToNull(data.sourceMarketplace),
     sourceUrl: emptyStringToNull(data.sourceUrl),
@@ -51,6 +52,22 @@ function normalizeProductInput(data: z.infer<typeof productSchema>) {
     seoDescription: emptyStringToNull(data.seoDescription),
     seoKeywords: emptyStringToNull(data.seoKeywords),
   };
+
+  if (normalized.sourceMarketplace === "tcgplayer") {
+    const pricing = applyTrackedTcgplayerPricing({
+      autoUpdatePrice: normalized.autoUpdatePrice,
+      priceCents: normalized.priceCents,
+      sourcePriceCents: normalized.sourcePriceCents,
+    });
+
+    return {
+      ...normalized,
+      compareAtCents: pricing.compareAtCents,
+      priceCents: pricing.priceCents,
+    };
+  }
+
+  return normalized;
 }
 
 const inlineProductSchema = z
@@ -125,9 +142,41 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const existing = await prisma.product.findUnique({
+    where: { id: params.id },
+    select: {
+      autoUpdatePrice: true,
+      priceCents: true,
+      sourceMarketplace: true,
+      sourcePriceCents: true,
+    },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  }
+
+  let patchData: Record<string, unknown> = parsed.data;
+
+  if (existing.sourceMarketplace === "tcgplayer") {
+    const nextAutoUpdatePrice = parsed.data.autoUpdatePrice ?? existing.autoUpdatePrice;
+    const nextPriceCents = parsed.data.priceCents ?? existing.priceCents;
+    const pricing = applyTrackedTcgplayerPricing({
+      autoUpdatePrice: nextAutoUpdatePrice,
+      priceCents: nextPriceCents,
+      sourcePriceCents: existing.sourcePriceCents,
+    });
+
+    patchData = {
+      ...parsed.data,
+      compareAtCents: pricing.compareAtCents,
+      ...(nextAutoUpdatePrice ? { priceCents: pricing.priceCents } : {}),
+    };
+  }
+
   await prisma.product.update({
     where: { id: params.id },
-    data: parsed.data,
+    data: patchData,
   });
 
   return NextResponse.json({ ok: true });

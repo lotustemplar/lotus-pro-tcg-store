@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents, slugify } from "@/lib/format";
 import type { CategoryOption } from "@/lib/admin";
+import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 
 type ImageRow = { url: string; altText: string };
 
 type TcgplayerImportResponse = {
   autoUpdatePrice: boolean;
   categoryId: string;
+  compareAtCents: number;
   description: string;
   images: ImageRow[];
   name: string;
@@ -200,6 +202,33 @@ export function ProductForm({
     }
   }, [selectedTopLevelId, values.categoryId]);
 
+  useEffect(() => {
+    if (values.sourceMarketplace !== "tcgplayer" || values.sourcePriceCents == null) {
+      return;
+    }
+
+    const pricing = applyTrackedTcgplayerPricing({
+      autoUpdatePrice: values.autoUpdatePrice,
+      priceCents: values.priceCents,
+      sourcePriceCents: values.sourcePriceCents,
+    });
+
+    setValues((current) => {
+      if (
+        current.compareAtCents === pricing.compareAtCents &&
+        current.priceCents === pricing.priceCents
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        compareAtCents: pricing.compareAtCents,
+        priceCents: pricing.priceCents,
+      };
+    });
+  }, [values.autoUpdatePrice, values.sourceMarketplace, values.sourcePriceCents]);
+
   function updateImage(idx: number, key: keyof ImageRow, val: string) {
     setValues((current) => {
       const images = [...current.images];
@@ -253,6 +282,7 @@ export function ProductForm({
         sourceImageUrl: data.sourceImageUrl ?? current.sourceImageUrl,
         autoUpdatePrice: data.autoUpdatePrice ?? current.autoUpdatePrice,
         categoryId: data.categoryId ?? current.categoryId,
+        compareAtCents: data.compareAtCents ?? current.compareAtCents,
         seoTitle: data.seoTitle ?? current.seoTitle,
         seoDescription: data.seoDescription ?? current.seoDescription,
         images: shouldReplaceImages ? data.images ?? current.images : current.images,
@@ -466,9 +496,12 @@ export function ProductForm({
               className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
             />
             {values.sourcePriceCents != null && (
-              <p className="mt-1 text-xs text-gray-500">
-                TCGplayer live price with shipping: {formatCents(values.sourcePriceCents)}
-              </p>
+              <div className="mt-1 space-y-1 text-xs text-gray-500">
+                <p>TCGplayer live price with shipping: {formatCents(values.sourcePriceCents)}</p>
+                <p>
+                  Auto Price keeps your storefront at 5% below TCGplayer and sets Compare-at to the TCGplayer price.
+                </p>
+              </div>
             )}
           </div>
           <div>

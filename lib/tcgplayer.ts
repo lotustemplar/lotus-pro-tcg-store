@@ -1,5 +1,6 @@
 import { slugify } from "./format";
 import type { CategoryRecord } from "./admin";
+import { getDiscountedStorePriceCents } from "./pricing";
 
 const TCGPLAYER_API_HEADERS = {
   accept: "application/json, text/plain, */*",
@@ -39,6 +40,7 @@ export type TcgplayerProductDetails = {
 export type TcgplayerImportPreview = {
   autoUpdatePrice: boolean;
   categoryId: string;
+  compareAtCents: number;
   description: string;
   images: { url: string; altText: string }[];
   name: string;
@@ -256,10 +258,11 @@ export async function importFromTcgplayerUrl(url: string, categories: CategoryRe
       productName,
       productTypeName: details.productTypeName,
     }),
+    compareAtCents: sourcePriceCents,
     description,
     images: [{ url: buildTcgplayerImageUrl(productId, 1000), altText: productName }],
     name: productName,
-    priceCents: sourcePriceCents,
+    priceCents: getDiscountedStorePriceCents(sourcePriceCents),
     seoDescription: description.slice(0, 155),
     seoTitle: productName,
     slug: slugify(productName),
