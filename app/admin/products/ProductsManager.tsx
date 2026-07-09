@@ -74,6 +74,8 @@ export function ProductsManager({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [syncingSourcePrices, setSyncingSourcePrices] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
   const [bulkCategory, setBulkCategory] = useState<BulkCategoryState>(() => {
     const firstTopLevel = topLevels[0];
     const firstCategory = firstTopLevel
@@ -113,6 +115,71 @@ export function ProductsManager({
     setProducts((current) =>
       current.map((product) => (product.id === id ? { ...product, [key]: value } : product))
     );
+  }
+
+  function sanitizeCurrencyInput(value: string) {
+    const cleaned = value.replace(/[^\d.]/g, "");
+    const [wholePart = "", ...fractionParts] = cleaned.split(".");
+    const fractionalPart = fractionParts.join("").slice(0, 2);
+    return fractionParts.length > 0 ? `${wholePart}.${fractionalPart}` : wholePart;
+  }
+
+  function sanitizeQuantityInput(value: string) {
+    return value.replace(/[^\d]/g, "");
+  }
+
+  function visiblePriceValue(product: AdminProduct) {
+    return priceDrafts[product.id] ?? (product.priceCents / 100).toFixed(2);
+  }
+
+  function visibleQuantityValue(product: AdminProduct) {
+    return quantityDrafts[product.id] ?? String(product.quantity);
+  }
+
+  function handlePriceDraftChange(id: string, rawValue: string) {
+    const sanitized = sanitizeCurrencyInput(rawValue);
+    setPriceDrafts((current) => ({ ...current, [id]: sanitized }));
+
+    if (sanitized === "") {
+      setProductField(id, "priceCents", 0);
+      return;
+    }
+
+    const parsed = Number(sanitized);
+    if (Number.isFinite(parsed)) {
+      setProductField(id, "priceCents", Math.max(0, Math.round(parsed * 100)));
+    }
+  }
+
+  function handlePriceDraftBlur(product: AdminProduct) {
+    const draft = priceDrafts[product.id];
+    const normalized = sanitizeCurrencyInput(draft ?? "");
+    const priceCents =
+      normalized === "" ? 0 : Math.max(0, Math.round(Number(normalized || "0") * 100));
+
+    setProductField(product.id, "priceCents", priceCents);
+    setPriceDrafts((current) => ({
+      ...current,
+      [product.id]: (priceCents / 100).toFixed(2),
+    }));
+  }
+
+  function handleQuantityDraftChange(id: string, rawValue: string) {
+    const sanitized = sanitizeQuantityInput(rawValue);
+    setQuantityDrafts((current) => ({ ...current, [id]: sanitized }));
+    setProductField(id, "quantity", sanitized === "" ? 0 : Math.max(0, Number(sanitized)));
+  }
+
+  function handleQuantityDraftBlur(product: AdminProduct) {
+    const draft = quantityDrafts[product.id];
+    const normalized = sanitizeQuantityInput(draft ?? "");
+    const quantity = normalized === "" ? 0 : Math.max(0, Number(normalized));
+
+    setProductField(product.id, "quantity", quantity);
+    setQuantityDrafts((current) => ({
+      ...current,
+      [product.id]: String(quantity),
+    }));
   }
 
   function clearMessage() {
@@ -182,6 +249,16 @@ export function ProductsManager({
     }
 
     setSavedProducts((current) => current.map((entry) => (entry.id === id ? { ...product } : entry)));
+    setPriceDrafts((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setQuantityDrafts((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
     setSavingIds((current) => current.filter((value) => value !== id));
     setMessage({ type: "success", text: `Saved ${product.name}.` });
   }
@@ -619,17 +696,11 @@ export function ProductsManager({
                         </td>
                         <td className="px-4 py-3">
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={(product.priceCents / 100).toFixed(2)}
-                            onChange={(event) =>
-                              setProductField(
-                                product.id,
-                                "priceCents",
-                                Math.max(0, Math.round(Number(event.target.value || "0") * 100))
-                              )
-                            }
+                            type="text"
+                            inputMode="decimal"
+                            value={visiblePriceValue(product)}
+                            onChange={(event) => handlePriceDraftChange(product.id, event.target.value)}
+                            onBlur={() => handlePriceDraftBlur(product)}
                             className="w-28 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                           />
                           <div className="mt-2 space-y-1 text-xs text-gray-500">
@@ -640,12 +711,11 @@ export function ProductsManager({
                         </td>
                         <td className="px-4 py-3">
                           <input
-                            type="number"
-                            min="0"
-                            value={product.quantity}
-                            onChange={(event) =>
-                              setProductField(product.id, "quantity", Math.max(0, Number(event.target.value || "0")))
-                            }
+                            type="text"
+                            inputMode="numeric"
+                            value={visibleQuantityValue(product)}
+                            onChange={(event) => handleQuantityDraftChange(product.id, event.target.value)}
+                            onBlur={() => handleQuantityDraftBlur(product)}
                             className="w-24 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                           />
                         </td>
