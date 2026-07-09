@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
 import { StickyPromoBar } from "@/components/StickyPromoBar";
+import { TawkToWidget } from "@/components/TawkToWidget";
 import { getNavCategories } from "@/lib/nav";
 import { getSiteSettings } from "@/lib/site-settings";
 import { buildSocialMetadata } from "@/lib/metadata";
@@ -43,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Footer categories={categories} settings={settings} />
           <StickyPromoBar />
           <CartDrawer />
+          <TawkToWidget />
         </CartProvider>
       </body>
     </html>
