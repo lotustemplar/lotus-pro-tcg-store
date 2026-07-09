@@ -129,7 +129,7 @@ model AdminUser {
 
 model SiteSettings {
   id                          String   @id @default("site")
-  brandName                   String   @default("Lotus Pro Decks")
+  brandName                   String   @default("Lotus Pro TCG")
   logoWideUrl                 String   @default("/logo/logo-wide.svg")
   logoSquareUrl               String   @default("/logo/logo-square.svg")
   heroBannerUrl               String?
@@ -143,7 +143,7 @@ model SiteSettings {
   heroSecondaryHref           String   @default("/#featured-right-now")
   categoryBackgroundsJson     String   @default("{}")
   featuredSectionTitle        String   @default("Featured Right Now")
-  siteMetaTitle               String   @default("Lotus Pro Decks | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
+  siteMetaTitle               String   @default("Lotus Pro TCG | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
   siteMetaDescription         String   @default("Sealed product, singles, and pro-built decks for Magic the Gathering, Pokemon, One Piece, Riftbound, and Weiss Schwarz.")
   footerDescription           String   @default("Sealed product, singles, and pro-built decks for Magic, Pokemon, One Piece, Riftbound, and Weiss Schwarz.")
   footerShopHeading           String   @default("Shop")

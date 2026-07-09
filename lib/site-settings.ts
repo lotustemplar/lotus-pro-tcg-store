@@ -1,6 +1,8 @@
 import { prisma } from "./prisma";
 
 export const SITE_SETTINGS_ID = "site";
+const LEGACY_BRAND_NAME = "Lotus Pro Decks";
+const CURRENT_BRAND_NAME = "Lotus Pro TCG";
 
 export type HeroSlide = {
   id: string;
@@ -47,7 +49,7 @@ export type SiteSettings = {
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  brandName: "Lotus Pro Decks",
+  brandName: CURRENT_BRAND_NAME,
   logoWideUrl: "/logo/logo-wide.svg",
   logoSquareUrl: "/logo/logo-square.svg",
   heroBannerUrl: null,
@@ -62,7 +64,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   heroSecondaryHref: "/#featured-right-now",
   categoryBackgrounds: {},
   featuredSectionTitle: "Featured Right Now",
-  siteMetaTitle: "Lotus Pro Decks | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz",
+  siteMetaTitle: "Lotus Pro TCG | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz",
   siteMetaDescription:
     "Sealed product, singles, and pro-built decks for Magic the Gathering, Pokemon, One Piece, Riftbound, and Weiss Schwarz.",
   footerDescription:
@@ -83,6 +85,10 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   footerBottomPromoLeft: "$5.99 flat shipping",
   footerBottomPromoRight: "Free shipping over $150",
 };
+
+function normalizeLegacyBrandValue(value: string) {
+  return value.replaceAll(LEGACY_BRAND_NAME, CURRENT_BRAND_NAME);
+}
 
 type SiteSettingsRecord =
   | (Partial<Omit<SiteSettings, "heroSlides" | "categoryBackgrounds">> & {
@@ -170,7 +176,7 @@ function resolveCategoryBackgrounds(record: SiteSettingsRecord): CategoryBackgro
 }
 
 export function mergeSiteSettings(record: SiteSettingsRecord): SiteSettings {
-  return {
+  const merged: SiteSettings = {
     brandName: requiredValue(record?.brandName, DEFAULT_SITE_SETTINGS.brandName),
     logoWideUrl: requiredValue(record?.logoWideUrl, DEFAULT_SITE_SETTINGS.logoWideUrl),
     logoSquareUrl: requiredValue(record?.logoSquareUrl, DEFAULT_SITE_SETTINGS.logoSquareUrl),
@@ -235,6 +241,13 @@ export function mergeSiteSettings(record: SiteSettingsRecord): SiteSettings {
       record?.footerBottomPromoRight,
       DEFAULT_SITE_SETTINGS.footerBottomPromoRight,
     ),
+  };
+
+  return {
+    ...merged,
+    brandName: normalizeLegacyBrandValue(merged.brandName),
+    siteMetaTitle: normalizeLegacyBrandValue(merged.siteMetaTitle),
+    footerLegalText: normalizeLegacyBrandValue(merged.footerLegalText),
   };
 }
 

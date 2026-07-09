@@ -89,7 +89,7 @@ async function main() {
 
     // Accessories (no subcategory - attaches directly to top-level category)
     { name: "Ultra Pro Deck Box (100ct)", price: 12.99, quantity: 40, categoryPath: "accessories", description: "Durable 100-count deck box for double-sleeved decks." },
-    { name: "Premium Playmat - Lotus Edition", price: 24.99, quantity: 5, categoryPath: "accessories", featured: true, description: "Stitched-edge neoprene playmat featuring the Lotus Pro Decks lotus design." },
+    { name: "Premium Playmat - Lotus Edition", price: 24.99, quantity: 5, categoryPath: "accessories", featured: true, description: "Stitched-edge neoprene playmat featuring the Lotus Pro TCG lotus design." },
 
     // Patreon Access (no subcategory)
     { name: "Patreon Access: Monthly Membership", price: 9.99, quantity: 999, categoryPath: "patreon-access", description: "Monthly Patreon membership: early access to drops, discounts, and exclusive pro-built decklists." },
