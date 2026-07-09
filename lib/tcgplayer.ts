@@ -159,6 +159,36 @@ function mapProductLineToTopLevelSlug(productLineName: string) {
   return null;
 }
 
+function inferAccessoryTopLevelSlug({
+  productLineName,
+  productName,
+  productTypeName,
+}: {
+  productLineName: string;
+  productName: string;
+  productTypeName: string;
+}) {
+  const haystack = `${productLineName} ${productName} ${productTypeName}`.toLowerCase();
+
+  const accessoryKeywords = [
+    "accessor",
+    "playmat",
+    "deck box",
+    "deckbox",
+    "sleeve",
+    "binder",
+    "portfolio",
+    "top loader",
+    "toploader",
+    "storage box",
+    "storage",
+    "dice",
+    "token",
+  ];
+
+  return accessoryKeywords.some((keyword) => haystack.includes(keyword)) ? "accessories" : null;
+}
+
 function inferSubcategorySlug({
   topLevelSlug,
   productName,
@@ -201,7 +231,10 @@ export function findSuggestedCategoryId(categories: CategoryRecord[], details: {
   productName: string;
   productTypeName: string;
 }) {
-  const topLevelSlug = mapProductLineToTopLevelSlug(details.productLineName);
+  const topLevelSlug =
+    mapProductLineToTopLevelSlug(details.productLineName) ??
+    inferAccessoryTopLevelSlug(details);
+
   if (!topLevelSlug) {
     throw new Error(`No category mapping exists yet for "${details.productLineName}".`);
   }
