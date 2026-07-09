@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCart } from "./CartContext";
 import { formatCents } from "@/lib/format";
-import { calculateShippingCents, FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/shipping";
+import { calculateShippingCents, remainingForFreeShippingCents } from "@/lib/shipping";
 import { useState } from "react";
 
 export function CartDrawer() {
@@ -11,7 +11,7 @@ export function CartDrawer() {
   const [checkingOut, setCheckingOut] = useState(false);
   const shippingCents = calculateShippingCents(subtotalCents);
   const totalCents = subtotalCents + shippingCents;
-  const remainingForFree = Math.max(0, FREE_SHIPPING_THRESHOLD_CENTS - subtotalCents);
+  const remainingForFree = remainingForFreeShippingCents(subtotalCents);
 
   async function checkout() {
     setCheckingOut(true);
