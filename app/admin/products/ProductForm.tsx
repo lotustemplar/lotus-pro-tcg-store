@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents, slugify } from "@/lib/format";
 import type { CategoryOption } from "@/lib/admin";
@@ -95,37 +95,59 @@ export function ProductForm({
     new Map(categories.map((category) => [category.topLevelId, category.topLevelName])).entries()
   ).map(([id, name]) => ({ id, name }));
   const initialCategory = initial?.categoryId ? categoryById.get(initial.categoryId) : undefined;
-  const [values, setValues] = useState<ProductFormValues>(
-    initial ?? {
-      name: "",
-      slug: "",
-      description: "",
-      priceCents: 0,
-      sourceMarketplace: null,
-      sourceUrl: null,
-      sourceProductId: null,
-      sourceProductLine: null,
-      sourceSetName: null,
-      sourceProductType: null,
-      sourcePriceCents: null,
-      sourceImageUrl: null,
-      autoUpdatePrice: false,
-      compareAtCents: null,
-      sku: "",
-      quantity: 0,
-      categoryId: categories[0]?.id ?? "",
-      featuredOnHome: false,
-      featuredOrder: 0,
-      isActive: true,
-      seoTitle: "",
-      seoDescription: "",
-      seoKeywords: "",
-      images: [{ url: "", altText: "" }],
+  const defaultTopLevelId = initialCategory?.topLevelId ?? topLevels[0]?.id ?? "";
+
+  function categoriesForTopLevel(topLevelId: string) {
+    const childCategories = categories.filter(
+      (category) => category.topLevelId === topLevelId && category.id !== topLevelId
+    );
+
+    if (childCategories.length > 0) {
+      return childCategories;
     }
+
+    return categories.filter((category) => category.id === topLevelId);
+  }
+
+  const normalizedInitialCategoryId = initial?.categoryId
+    ? (() => {
+        const matchingCategories = categoriesForTopLevel(initialCategory?.topLevelId ?? "");
+        const currentCategory = matchingCategories.find((category) => category.id === initial.categoryId);
+        return currentCategory?.id ?? matchingCategories[0]?.id ?? initial.categoryId;
+      })()
+    : undefined;
+  const defaultCategoryId = normalizedInitialCategoryId ?? categoriesForTopLevel(defaultTopLevelId)[0]?.id ?? "";
+  const [values, setValues] = useState<ProductFormValues>(
+    initial
+      ? { ...initial, categoryId: normalizedInitialCategoryId ?? initial.categoryId }
+      : {
+          name: "",
+          slug: "",
+          description: "",
+          priceCents: 0,
+          sourceMarketplace: null,
+          sourceUrl: null,
+          sourceProductId: null,
+          sourceProductLine: null,
+          sourceSetName: null,
+          sourceProductType: null,
+          sourcePriceCents: null,
+          sourceImageUrl: null,
+          autoUpdatePrice: false,
+          compareAtCents: null,
+          sku: "",
+          quantity: 0,
+          categoryId: defaultCategoryId,
+          featuredOnHome: false,
+          featuredOrder: 0,
+          isActive: true,
+          seoTitle: "",
+          seoDescription: "",
+          seoKeywords: "",
+          images: [{ url: "", altText: "" }],
+        }
   );
-  const [selectedTopLevelId, setSelectedTopLevelId] = useState(
-    initialCategory?.topLevelId ?? categories[0]?.topLevelId ?? ""
-  );
+  const [selectedTopLevelId, setSelectedTopLevelId] = useState(defaultTopLevelId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [slugTouched, setSlugTouched] = useState(!!initial);
@@ -136,10 +158,6 @@ export function ProductForm({
 
   function update<K extends keyof ProductFormValues>(key: K, val: ProductFormValues[K]) {
     setValues((current) => ({ ...current, [key]: val }));
-  }
-
-  function categoriesForTopLevel(topLevelId: string) {
-    return categories.filter((category) => category.topLevelId === topLevelId);
   }
 
   function syncCategory(categoryId: string) {
@@ -165,6 +183,22 @@ export function ProductForm({
     const currentCategory = matchingCategories.find((category) => category.id === values.categoryId);
     update("categoryId", currentCategory?.id ?? matchingCategories[0].id);
   }
+
+  useEffect(() => {
+    const matchingCategories = categoriesForTopLevel(selectedTopLevelId);
+
+    if (matchingCategories.length === 0) {
+      if (values.categoryId !== "") {
+        update("categoryId", "");
+      }
+      return;
+    }
+
+    const currentCategory = matchingCategories.find((category) => category.id === values.categoryId);
+    if (!currentCategory) {
+      update("categoryId", matchingCategories[0].id);
+    }
+  }, [selectedTopLevelId, values.categoryId]);
 
   function updateImage(idx: number, key: keyof ImageRow, val: string) {
     setValues((current) => {
