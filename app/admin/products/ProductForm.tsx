@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents, slugify } from "@/lib/format";
-
-type CategoryOption = {
-  id: string;
-  label: string;
-};
+import type { CategoryOption } from "@/lib/admin";
 
 type ImageRow = { url: string; altText: string };
 
@@ -94,6 +90,11 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const hasCategories = categories.length > 0;
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const topLevels = Array.from(
+    new Map(categories.map((category) => [category.topLevelId, category.topLevelName])).entries()
+  ).map(([id, name]) => ({ id, name }));
+  const initialCategory = initial?.categoryId ? categoryById.get(initial.categoryId) : undefined;
   const [values, setValues] = useState<ProductFormValues>(
     initial ?? {
       name: "",
@@ -122,6 +123,9 @@ export function ProductForm({
       images: [{ url: "", altText: "" }],
     }
   );
+  const [selectedTopLevelId, setSelectedTopLevelId] = useState(
+    initialCategory?.topLevelId ?? categories[0]?.topLevelId ?? ""
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [slugTouched, setSlugTouched] = useState(!!initial);
@@ -132,6 +136,34 @@ export function ProductForm({
 
   function update<K extends keyof ProductFormValues>(key: K, val: ProductFormValues[K]) {
     setValues((current) => ({ ...current, [key]: val }));
+  }
+
+  function categoriesForTopLevel(topLevelId: string) {
+    return categories.filter((category) => category.topLevelId === topLevelId);
+  }
+
+  function syncCategory(categoryId: string) {
+    const category = categoryById.get(categoryId);
+    if (!category) {
+      update("categoryId", categoryId);
+      return;
+    }
+
+    setSelectedTopLevelId(category.topLevelId);
+    update("categoryId", category.id);
+  }
+
+  function syncTopLevel(topLevelId: string) {
+    setSelectedTopLevelId(topLevelId);
+
+    const matchingCategories = categoriesForTopLevel(topLevelId);
+    if (matchingCategories.length === 0) {
+      update("categoryId", "");
+      return;
+    }
+
+    const currentCategory = matchingCategories.find((category) => category.id === values.categoryId);
+    update("categoryId", currentCategory?.id ?? matchingCategories[0].id);
   }
 
   function updateImage(idx: number, key: keyof ImageRow, val: string) {
@@ -192,6 +224,13 @@ export function ProductForm({
         images: shouldReplaceImages ? data.images ?? current.images : current.images,
       };
     });
+
+    if (data.categoryId) {
+      const importedCategory = categoryById.get(data.categoryId);
+      if (importedCategory) {
+        setSelectedTopLevelId(importedCategory.topLevelId);
+      }
+    }
 
     setImportMessage("TCGplayer product imported. Review anything you want, then save.");
     setImporting(false);
@@ -327,19 +366,39 @@ export function ProductForm({
         <div className="grid gap-4 lg:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm text-gray-400">IP</label>
-            <input
-              value={values.sourceProductLine ?? ""}
-              readOnly
-              className="w-full rounded-md border border-border bg-bg/60 px-3 py-2 text-gray-300 outline-none"
-            />
+            <select
+              value={selectedTopLevelId}
+              onChange={(e) => syncTopLevel(e.target.value)}
+              disabled={!hasCategories}
+              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+            >
+              {topLevels.map((topLevel) => (
+                <option key={topLevel.id} value={topLevel.id}>
+                  {topLevel.name}
+                </option>
+              ))}
+            </select>
+            {values.sourceProductLine && (
+              <p className="mt-2 text-xs text-gray-500">Imported suggestion: {values.sourceProductLine}</p>
+            )}
           </div>
           <div>
-            <label className="mb-1 block text-sm text-gray-400">Product Type</label>
-            <input
-              value={values.sourceProductType ?? ""}
-              readOnly
-              className="w-full rounded-md border border-border bg-bg/60 px-3 py-2 text-gray-300 outline-none"
-            />
+            <label className="mb-1 block text-sm text-gray-400">Product Category</label>
+            <select
+              value={values.categoryId}
+              onChange={(e) => syncCategory(e.target.value)}
+              disabled={!hasCategories}
+              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+            >
+              {categoriesForTopLevel(selectedTopLevelId).map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            {values.sourceProductType && (
+              <p className="mt-2 text-xs text-gray-500">Imported suggestion: {values.sourceProductType}</p>
+            )}
           </div>
         </div>
         <div>
@@ -351,27 +410,11 @@ export function ProductForm({
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
           />
         </div>
-        <div>
-          <label className="mb-1 block text-sm text-gray-400">Category</label>
-          <select
-            value={values.categoryId}
-            onChange={(e) => update("categoryId", e.target.value)}
-            disabled={!hasCategories}
-            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-          >
-            {!hasCategories && <option value="">No categories available yet</option>}
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          {!hasCategories && (
-            <p className="mt-2 text-xs text-red-300">
-              Add at least one category in the admin categories page before creating products.
-            </p>
-          )}
-        </div>
+        {!hasCategories && (
+          <p className="rounded-md bg-red-950 px-4 py-2 text-xs text-red-300">
+            Add at least one category in the admin categories page before creating products.
+          </p>
+        )}
       </section>
 
       <section className="space-y-4 rounded-xl border border-border bg-bg-panel p-5">

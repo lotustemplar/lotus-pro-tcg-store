@@ -8,7 +8,14 @@ export type CategoryRecord = {
   parent: { id: string; name: string } | null;
 };
 
-export type CategoryOption = { id: string; label: string };
+export type CategoryOption = {
+  id: string;
+  label: string;
+  name: string;
+  parentId: string | null;
+  topLevelId: string;
+  topLevelName: string;
+};
 
 export async function getAllCategoriesWithParent(): Promise<CategoryRecord[]> {
   return prisma.category.findMany({
@@ -25,6 +32,10 @@ export function toLeafOptions(categories: CategoryRecord[]): CategoryOption[] {
     .map((c) => ({
       id: c.id,
       label: c.parent ? `${c.parent.name} / ${c.name}` : c.name,
+      name: c.name,
+      parentId: c.parentId,
+      topLevelId: c.parent ? c.parent.id : c.id,
+      topLevelName: c.parent ? c.parent.name : c.name,
     }));
 }
 
@@ -32,5 +43,9 @@ export function toAllOptions(categories: CategoryRecord[]): CategoryOption[] {
   return categories.map((c) => ({
     id: c.id,
     label: c.parent ? `${c.parent.name} / ${c.name}` : c.name,
+    name: c.name,
+    parentId: c.parentId,
+    topLevelId: c.parent ? c.parent.id : c.id,
+    topLevelName: c.parent ? c.parent.name : c.name,
   }));
 }
