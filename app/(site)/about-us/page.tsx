@@ -9,17 +9,17 @@ const COMMUNITY_POINTS = [
   {
     title: "Family-Owned and Collector-Built",
     description:
-      "Lotus Pro Decks started with a simple idea: take the same passion we bring to our own collections, decks, and events, and turn it into a store that treats every customer like part of the community.",
+      "Lotus Pro TCG started with a simple idea: share our love of trading card games through an online store built with the same care, excitement, and standards we want for our own collections.",
   },
   {
     title: "Always In The Community",
     description:
-      "We do not just sell TCG products from a distance. We stay active in the scene, keep up with releases, talk strategy, follow the market, and stay plugged into the same games and conversations our customers care about.",
+      "We stay connected to the hobby every day by following releases, watching the market, tracking new products, and keeping up with the games and conversations collectors and players care about most.",
   },
   {
     title: "Competitive Mindset, Personal Service",
     description:
-      "From tournament tables to collector chats, we understand that players and collectors want more than a checkout page. They want trustworthy products, honest communication, and people behind the store who actually know the hobby.",
+      "We understand that players and collectors want more than a checkout page. They want trustworthy products, honest communication, careful service, and people behind the brand who genuinely know the hobby.",
   },
 ];
 
@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
   const title = `About Us`;
   const description =
-    "Learn how Lotus Pro Decks grew from a small family-owned passion project into a community-driven TCG storefront built by collectors and competitors.";
+    "Learn how Lotus Pro TCG grew from a small family-owned passion project into an online TCG store built by collectors, competitors, and lifelong fans of the hobby.";
 
   return {
     title,
@@ -57,10 +57,10 @@ export default async function AboutUsPage() {
               A small family-owned business sharing our love of trading card games with the world.
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-gray-200 sm:text-base">
-              What started as a family passion for TCGs grew into a storefront built around the same things
-              we value most ourselves: authentic products, strong community ties, competitive energy, and a
-              real love for the hobby. We created {settings.brandName} to give players, collectors, and fans
-              a place that feels personal, trustworthy, and genuinely part of the scene.
+              What started as a family passion for TCGs grew into an online store built around the same things
+              we value most ourselves: authentic products, fair pricing, careful service, and a real love for
+              the hobby. We created {settings.brandName} to give players, collectors, and fans a place that
+              feels personal, trustworthy, and genuinely connected to the TCG world.
             </p>
           </div>
 
@@ -70,13 +70,13 @@ export default async function AboutUsPage() {
             </p>
             <div className="mt-4 space-y-4 text-sm leading-6 text-gray-200">
               <p>
-                We are constantly around the community, following releases, talking with other players,
-                watching trends, and staying close to the games we love.
+                We stay immersed in the community by following releases, watching trends, learning the market,
+                and keeping close to the games we love.
               </p>
               <p>
                 We also bring a competitive mindset to what we do. We know the excitement of chasing the right
-                deck, the right sealed product, and the right pickup at the right time, because we live that
-                same experience ourselves.
+                pickup at the right time, finding the right sealed product, and building a collection with real
+                intention, because we live that same experience ourselves.
               </p>
             </div>
           </div>
@@ -101,18 +101,19 @@ export default async function AboutUsPage() {
             <h2 className="font-display text-3xl font-semibold text-white">More Than Just A Store</h2>
             <div className="mt-4 space-y-4 text-sm leading-7 text-gray-300">
               <p>
-                We believe the best TCG businesses are built by people who are actually in the hobby, not just
-                around it. That means staying connected to players, collectors, local scenes, major releases,
-                competitive play, and the culture that makes trading card games special in the first place.
+                We believe the best TCG businesses are built by people who are genuinely invested in the hobby,
+                not just selling around it. That means staying connected to collectors, major releases,
+                competitive play, product trends, and the culture that makes trading card games special in the
+                first place.
               </p>
               <p>
-                Whether you are hunting sealed product, grabbing something for your next event, or adding to a
+                Whether you are hunting sealed product, looking for the right accessory, or adding to a
                 long-term collection, our goal is to make every order feel like it came from people who
                 understand why it matters.
               </p>
               <p>
-                We are proud to be growing as a family-run business, and even more proud to do it alongside a
-                wider community that shares the same excitement we do every time a new set drops.
+                We are proud to be growing as a family-run online business, and even more proud to do it
+                alongside a wider community that shares the same excitement we do every time a new set drops.
               </p>
             </div>
           </div>
