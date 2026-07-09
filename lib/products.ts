@@ -1,5 +1,20 @@
 import { prisma } from "./prisma";
 
+export const CATEGORY_SORT_OPTIONS = [
+  { value: "newest", label: "Newest" },
+  { value: "price-asc", label: "Price: Low to High" },
+  { value: "price-desc", label: "Price: High to Low" },
+  { value: "name-asc", label: "Name: A to Z" },
+  { value: "name-desc", label: "Name: Z to A" },
+] as const;
+
+export type CategorySortOption = (typeof CATEGORY_SORT_OPTIONS)[number]["value"];
+
+export type CategoryProductFilters = {
+  hideOutOfStock?: boolean;
+  sort?: CategorySortOption;
+};
+
 export type ProductCardData = {
   id: string;
   slug: string;
@@ -43,11 +58,33 @@ export async function getSubCategory(topSlug: string, subSlug: string): Promise<
   return prisma.category.findFirst({ where: { slug: subSlug, parentId: top.id } });
 }
 
-export async function getProductsForCategoryIds(categoryIds: string[]): Promise<ProductCardData[]> {
+function getCategorySortOrder(sort: CategorySortOption | undefined) {
+  switch (sort) {
+    case "price-asc":
+      return [{ priceCents: "asc" as const }, { name: "asc" as const }];
+    case "price-desc":
+      return [{ priceCents: "desc" as const }, { name: "asc" as const }];
+    case "name-asc":
+      return [{ name: "asc" as const }];
+    case "name-desc":
+      return [{ name: "desc" as const }];
+    default:
+      return [{ createdAt: "desc" as const }];
+  }
+}
+
+export async function getProductsForCategoryIds(
+  categoryIds: string[],
+  filters: CategoryProductFilters = {},
+): Promise<ProductCardData[]> {
   return prisma.product.findMany({
-    where: { categoryId: { in: categoryIds }, isActive: true },
+    where: {
+      categoryId: { in: categoryIds },
+      isActive: true,
+      ...(filters.hideOutOfStock ? { quantity: { gt: 0 } } : {}),
+    },
     include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-    orderBy: { createdAt: "desc" },
+    orderBy: getCategorySortOrder(filters.sort),
   });
 }
 
