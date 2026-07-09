@@ -66,7 +66,7 @@ export function Header({
             {categories.map((category) => (
               <div
                 key={category.slug}
-                className="relative"
+                className="relative -my-3 py-3"
                 onMouseEnter={() => setOpenSlug(category.slug)}
                 onMouseLeave={() => setOpenSlug(null)}
               >
@@ -74,23 +74,25 @@ export function Header({
                   href={`/category/${category.slug}`}
                   className={
                     category.navStyle === "patreon"
-                      ? "text-sm font-medium text-gold transition hover:text-white"
-                      : "text-sm font-medium text-white/90 transition hover:text-brand-200"
+                      ? "block rounded-lg px-3 py-2 text-sm font-medium text-gold transition hover:bg-white/[0.04] hover:text-white"
+                      : "block rounded-lg px-3 py-2 text-sm font-medium text-white/90 transition hover:bg-white/[0.04] hover:text-brand-200"
                   }
                 >
                   {category.name}
                 </Link>
                 {category.subs.length > 0 && openSlug === category.slug && (
-                  <div className="absolute left-1/2 top-full z-30 mt-4 w-72 -translate-x-1/2 rounded-2xl border border-white/12 bg-[#0b1020] p-2 shadow-[0_24px_60px_rgba(2,6,16,0.68)]">
-                    {category.subs.map((sub) => (
-                      <Link
-                        key={sub.slug}
-                        href={`/category/${category.slug}/${sub.slug}`}
-                        className="block rounded-xl bg-[#12192b] px-4 py-3 text-sm text-gray-200 transition hover:bg-[#1a2338] hover:text-white"
-                      >
-                        {sub.name}
-                      </Link>
-                    ))}
+                  <div className="absolute left-1/2 top-full z-30 w-72 -translate-x-1/2 pt-3">
+                    <div className="rounded-2xl border border-white/12 bg-[#0b1020] p-2 shadow-[0_24px_60px_rgba(2,6,16,0.68)]">
+                      {category.subs.map((sub) => (
+                        <Link
+                          key={sub.slug}
+                          href={`/category/${category.slug}/${sub.slug}`}
+                          className="block rounded-xl bg-[#12192b] px-4 py-3 text-sm text-gray-200 transition hover:bg-[#1a2338] hover:text-white"
+                        >
+                          {sub.name}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
