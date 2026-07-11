@@ -105,7 +105,7 @@ export function toCardProps(p: ProductCardData) {
 
 export async function getFeaturedProducts(): Promise<ProductCardData[]> {
   return prisma.product.findMany({
-    where: { featuredOnHome: true, isActive: true },
+    where: { featuredOnHome: true, isActive: true, quantity: { gt: 0 } },
     orderBy: { featuredOrder: "asc" },
     include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
   });
