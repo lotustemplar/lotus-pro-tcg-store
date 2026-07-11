@@ -6,6 +6,8 @@ import { ProductCard } from "./ProductCard";
 export type CarouselProduct = {
   slug: string;
   name: string;
+  displayName?: string;
+  setName?: string | null;
   priceCents: number;
   compareAtCents?: number | null;
   image: string | null;
