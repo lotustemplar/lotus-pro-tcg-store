@@ -36,6 +36,8 @@ function StockPill({ quantity }: { quantity: number }) {
 export function ProductCard({
   slug,
   name,
+  displayName,
+  setName,
   priceCents,
   compareAtCents,
   image,
@@ -43,6 +45,8 @@ export function ProductCard({
 }: {
   slug: string;
   name: string;
+  displayName?: string;
+  setName?: string | null;
   priceCents: number;
   compareAtCents?: number | null;
   image: string | null;
@@ -74,10 +78,10 @@ export function ProductCard({
       <div className="flex flex-1 flex-col gap-4 p-4">
         <div className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-gray-500">
-            Collector Favorite
+            {setName || "Collector Favorite"}
           </p>
-          <h3 className="line-clamp-2 font-display text-lg font-bold leading-snug text-white">
-            {name}
+          <h3 className="line-clamp-2 font-display text-lg font-bold leading-snug text-white" title={name}>
+            {displayName || name}
           </h3>
         </div>
 

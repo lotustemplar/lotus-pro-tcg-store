@@ -7,6 +7,8 @@ type StorefrontShelfCardProps = {
   id: string;
   slug: string;
   name: string;
+  displayName?: string;
+  setName?: string | null;
   priceCents: number;
   compareAtCents?: number | null;
   image: string | null;
@@ -21,6 +23,8 @@ export function StorefrontShelfCard({
   id,
   slug,
   name,
+  displayName,
+  setName,
   priceCents,
   compareAtCents,
   image,
@@ -40,7 +44,14 @@ export function StorefrontShelfCard({
 
       <div className="flex flex-1 flex-col p-4">
         <Link href={`/product/${slug}`} className="block">
-          <h3 className="line-clamp-2 min-h-[3.5rem] text-base font-medium leading-6 text-white">{name}</h3>
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gray-500">
+              {setName || "Featured Product"}
+            </p>
+            <h3 className="line-clamp-2 min-h-[3.5rem] text-base font-medium leading-6 text-white" title={name}>
+              {displayName || name}
+            </h3>
+          </div>
         </Link>
         <div className="mt-3 space-y-1">
           <div className="text-2xl font-semibold text-white">{formatPrice(priceCents)}</div>

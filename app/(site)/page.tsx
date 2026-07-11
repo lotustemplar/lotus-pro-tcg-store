@@ -2,7 +2,12 @@ import Link from "next/link";
 import { Carousel } from "@/components/Carousel";
 import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
 import { StorefrontShelfCard } from "@/components/StorefrontShelfCard";
-import { getFeaturedProducts, getHomeCategoryPreviews, toCardProps } from "@/lib/products";
+import {
+  getFeaturedProducts,
+  getHomeCategoryPreviews,
+  getStorefrontProductName,
+  toCardProps,
+} from "@/lib/products";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
@@ -41,12 +46,15 @@ function HeroFeaturedProductCard({
     id: string;
     slug: string;
     name: string;
+    sourceSetName: string | null;
     priceCents: number;
     compareAtCents: number | null;
     quantity: number;
     images: { url: string }[];
   };
 }) {
+  const displayName = getStorefrontProductName(product.name, product.sourceSetName);
+
   return (
     <Link
       href={`/product/${product.slug}`}
@@ -66,7 +74,14 @@ function HeroFeaturedProductCard({
 
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className="line-clamp-2 text-sm font-medium leading-5 text-white">{product.name}</p>
+          <div className="min-w-0">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+              {product.sourceSetName || "Featured Product"}
+            </p>
+            <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-white" title={product.name}>
+              {displayName}
+            </p>
+          </div>
           {product.quantity <= 1 ? (
             <span className="rounded-full border border-red-400/30 bg-red-500/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-red-200">
               Low
@@ -260,6 +275,8 @@ export default async function HomePage() {
               id={product.id}
               slug={product.slug}
               name={product.name}
+              displayName={getStorefrontProductName(product.name, product.sourceSetName)}
+              setName={product.sourceSetName}
               priceCents={product.priceCents}
               compareAtCents={product.compareAtCents}
               image={product.images[0]?.url ?? null}

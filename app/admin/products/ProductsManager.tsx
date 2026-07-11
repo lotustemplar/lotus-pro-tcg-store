@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents } from "@/lib/format";
@@ -401,6 +402,9 @@ export function ProductsManager({
           <p className="text-sm text-gray-400">
             Grouped by IP, with inline edits for price, quantity, category, visibility, and auto pricing.
           </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Use Full Edit on any product to open the full creation-style form for images, SEO, import links, and every advanced setting.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <a
@@ -679,6 +683,14 @@ export function ProductsManager({
                                 {[product.sourceSetName, product.sourceProductType].filter(Boolean).join(" / ")}
                               </p>
                             )}
+                            <p>
+                              <Link
+                                href={`/admin/products/${product.id}`}
+                                className="font-semibold text-brand-300 hover:text-brand-200 hover:underline"
+                              >
+                                Open full editor
+                              </Link>
+                            </p>
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -760,6 +772,12 @@ export function ProductsManager({
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-2">
+                            <Link
+                              href={`/admin/products/${product.id}`}
+                              className="rounded-md border border-white/12 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:border-brand-400/50 hover:text-white"
+                            >
+                              Full Edit
+                            </Link>
                             <button
                               type="button"
                               disabled={!dirty || saving}

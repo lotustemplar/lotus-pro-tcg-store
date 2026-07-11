@@ -19,6 +19,7 @@ export type ProductCardData = {
   id: string;
   slug: string;
   name: string;
+  sourceSetName: string | null;
   priceCents: number;
   compareAtCents: number | null;
   quantity: number;
@@ -88,10 +89,32 @@ export async function getProductsForCategoryIds(
   });
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function getStorefrontProductName(name: string, sourceSetName?: string | null) {
+  const trimmedName = name.trim();
+  const trimmedSetName = sourceSetName?.trim();
+
+  if (!trimmedSetName) {
+    return trimmedName;
+  }
+
+  const strippedName = trimmedName
+    .replace(new RegExp(`^${escapeRegExp(trimmedSetName)}\\s*[-:|]\\s*`, "i"), "")
+    .replace(new RegExp(`^${escapeRegExp(trimmedSetName)}\\s+`, "i"), "")
+    .trim();
+
+  return strippedName.length > 0 ? strippedName : trimmedName;
+}
+
 export function toCardProps(p: ProductCardData) {
   return {
     slug: p.slug,
     name: p.name,
+    displayName: getStorefrontProductName(p.name, p.sourceSetName),
+    setName: p.sourceSetName,
     priceCents: p.priceCents,
     compareAtCents: p.compareAtCents,
     image: p.images[0]?.url ?? null,
