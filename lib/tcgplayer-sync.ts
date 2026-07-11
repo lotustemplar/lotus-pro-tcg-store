@@ -1,10 +1,6 @@
 import { prisma } from "./prisma";
-import { buildTcgplayerImageUrl, fetchTcgplayerProductDetails } from "./tcgplayer";
+import { buildTcgplayerImageUrl, fetchResolvedTcgplayerPricing } from "./tcgplayer";
 import { applyTrackedTcgplayerPricing } from "./pricing";
-
-function toCents(price: number | null | undefined) {
-  return Math.max(0, Math.round((price ?? 0) * 100));
-}
 
 function toErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -22,6 +18,7 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
       id: true,
       autoUpdatePrice: true,
       sourceProductId: true,
+      sourcePriceCents: true,
     },
   });
 
@@ -33,10 +30,11 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
     if (!product.sourceProductId) continue;
 
     try {
-      const details = await fetchTcgplayerProductDetails(product.sourceProductId);
-      const sourcePriceCents = toCents(
-        details.lowestPriceWithShipping ?? details.lowestPrice ?? details.marketPrice ?? 0
+      const { details, resolved } = await fetchResolvedTcgplayerPricing(
+        product.sourceProductId,
+        product.sourcePriceCents,
       );
+      const sourcePriceCents = resolved.sourcePriceCents;
       const pricing = applyTrackedTcgplayerPricing({
         autoUpdatePrice: product.autoUpdatePrice,
         priceCents: sourcePriceCents,

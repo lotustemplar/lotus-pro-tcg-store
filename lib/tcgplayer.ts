@@ -58,6 +58,12 @@ export type TcgplayerImportPreview = {
   sourceUrl: string;
 };
 
+export type ResolvedTcgplayerSourcePrice = {
+  priceSource: "lowestPriceWithShipping" | "marketPrice" | "lowestPrice" | "previousSourcePrice";
+  sourcePriceCents: number;
+  usedShippingInclusivePrice: boolean;
+};
+
 function normalizeText(value: string) {
   return value.trim().toLowerCase();
 }
@@ -85,6 +91,10 @@ function stripHtml(html: string | null | undefined) {
 
 function toCents(price: number | null | undefined) {
   return Math.max(0, Math.round((price ?? 0) * 100));
+}
+
+function positiveNumber(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
 
 export function buildTcgplayerImageUrl(productId: number, size: 1000 | 437 | 200 = 1000) {
@@ -144,6 +154,85 @@ export async function fetchTcgplayerProductDetails(productId: number) {
       description: data.customAttributes?.description ?? null,
     },
   } satisfies TcgplayerProductDetails;
+}
+
+export async function fetchResolvedTcgplayerPricing(
+  productId: number,
+  previousSourcePriceCents?: number | null,
+): Promise<{
+  details: TcgplayerProductDetails;
+  resolved: ResolvedTcgplayerSourcePrice;
+}> {
+  const firstDetails = await fetchTcgplayerProductDetails(productId);
+  const detailSamples = [firstDetails];
+
+  if (!positiveNumber(firstDetails.lowestPriceWithShipping)) {
+    detailSamples.push(await fetchTcgplayerProductDetails(productId));
+  }
+
+  const shippingInclusiveCandidates = detailSamples
+    .map((sample) => positiveNumber(sample.lowestPriceWithShipping))
+    .filter((value): value is number => value != null);
+
+  if (shippingInclusiveCandidates.length > 0) {
+    return {
+      details: firstDetails,
+      resolved: {
+        priceSource: "lowestPriceWithShipping",
+        sourcePriceCents: toCents(Math.max(...shippingInclusiveCandidates)),
+        usedShippingInclusivePrice: true,
+      },
+    };
+  }
+
+  const lowestPriceCandidates = detailSamples
+    .map((sample) => positiveNumber(sample.lowestPrice))
+    .filter((value): value is number => value != null);
+  const marketPriceCandidates = detailSamples
+    .map((sample) => positiveNumber(sample.marketPrice))
+    .filter((value): value is number => value != null);
+
+  const fallbackMarketPrice =
+    marketPriceCandidates.length > 0 ? Math.max(...marketPriceCandidates) : null;
+  const fallbackLowestPrice =
+    lowestPriceCandidates.length > 0 ? Math.max(...lowestPriceCandidates) : null;
+
+  if (previousSourcePriceCents != null && previousSourcePriceCents > 0) {
+    const fallbackFloorCents = toCents(
+      Math.max(fallbackMarketPrice ?? 0, fallbackLowestPrice ?? 0),
+    );
+
+    if (fallbackFloorCents === 0 || previousSourcePriceCents >= fallbackFloorCents) {
+      return {
+        details: firstDetails,
+        resolved: {
+          priceSource: "previousSourcePrice",
+          sourcePriceCents: previousSourcePriceCents,
+          usedShippingInclusivePrice: false,
+        },
+      };
+    }
+  }
+
+  if (fallbackMarketPrice != null) {
+    return {
+      details: firstDetails,
+      resolved: {
+        priceSource: "marketPrice",
+        sourcePriceCents: toCents(fallbackMarketPrice),
+        usedShippingInclusivePrice: false,
+      },
+    };
+  }
+
+  return {
+    details: firstDetails,
+    resolved: {
+      priceSource: "lowestPrice",
+      sourcePriceCents: toCents(fallbackLowestPrice ?? 0),
+      usedShippingInclusivePrice: false,
+    },
+  };
 }
 
 function mapProductLineToTopLevelSlug(productLineName: string) {
@@ -277,12 +366,10 @@ export async function importFromTcgplayerUrl(url: string, categories: CategoryRe
     throw new Error("Paste a full TCGplayer product URL so I can find the product ID.");
   }
 
-  const details = await fetchTcgplayerProductDetails(productId);
+  const { details, resolved } = await fetchResolvedTcgplayerPricing(productId);
   const productName = details.productName.trim();
   const description = stripHtml(details.customAttributes?.description);
-  const sourcePriceCents = toCents(
-    details.lowestPriceWithShipping ?? details.lowestPrice ?? details.marketPrice ?? 0
-  );
+  const sourcePriceCents = resolved.sourcePriceCents;
 
   return {
     autoUpdatePrice: true,
