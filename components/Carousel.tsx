@@ -14,7 +14,13 @@ export type CarouselProduct = {
   quantity: number;
 };
 
-export function Carousel({ products }: { products: CarouselProduct[] }) {
+export function Carousel({
+  products,
+  featuredStockOverlay = false,
+}: {
+  products: CarouselProduct[];
+  featuredStockOverlay?: boolean;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   function scroll(dir: "left" | "right") {
@@ -42,7 +48,7 @@ export function Carousel({ products }: { products: CarouselProduct[] }) {
       >
         {products.map((product) => (
           <div key={product.slug} className="w-[78%] flex-none sm:w-[46%] lg:w-[30%] xl:w-[24%]">
-            <ProductCard {...product} />
+            <ProductCard {...product} featuredStockOverlay={featuredStockOverlay} />
           </div>
         ))}
       </div>

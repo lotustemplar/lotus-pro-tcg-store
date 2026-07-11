@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatCents } from "@/lib/format";
+import { FeaturedStockOverlay } from "./FeaturedStockOverlay";
 
 function StockPill({ quantity }: { quantity: number }) {
   if (quantity <= 0) {
@@ -42,6 +43,7 @@ export function ProductCard({
   compareAtCents,
   image,
   quantity,
+  featuredStockOverlay = false,
 }: {
   slug: string;
   name: string;
@@ -51,6 +53,7 @@ export function ProductCard({
   compareAtCents?: number | null;
   image: string | null;
   quantity: number;
+  featuredStockOverlay?: boolean;
 }) {
   return (
     <Link
@@ -69,10 +72,13 @@ export function ProductCard({
             No Image
           </div>
         )}
+        {featuredStockOverlay ? <FeaturedStockOverlay quantity={quantity} /> : null}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,10,18,0.02),rgba(7,10,18,0.18)_55%,rgba(7,10,18,0.82))]" />
-        <div className="absolute left-4 top-4">
-          <StockPill quantity={quantity} />
-        </div>
+        {!featuredStockOverlay ? (
+          <div className="absolute left-4 top-4">
+            <StockPill quantity={quantity} />
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-4">

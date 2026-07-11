@@ -216,6 +216,7 @@ export function RotatingFeaturedShelf({ products }: { products: FeaturedProduct[
               compareAtCents={product.compareAtCents}
               image={product.images[0]?.url ?? null}
               quantity={product.quantity}
+              featuredStockOverlay
             />
           ))}
         </div>

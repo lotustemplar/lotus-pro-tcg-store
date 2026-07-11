@@ -201,7 +201,7 @@ export default async function HomePage() {
         </div>
 
         <div className="xl:hidden">
-          <Carousel products={carouselProducts} />
+          <Carousel products={carouselProducts} featuredStockOverlay />
         </div>
       </section>
     </div>

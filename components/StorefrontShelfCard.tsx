@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AddToCartButton } from "./AddToCartButton";
+import { FeaturedStockOverlay } from "./FeaturedStockOverlay";
 
 type StorefrontShelfCardProps = {
   id: string;
@@ -13,6 +14,7 @@ type StorefrontShelfCardProps = {
   compareAtCents?: number | null;
   image: string | null;
   quantity: number;
+  featuredStockOverlay?: boolean;
 };
 
 function formatPrice(cents: number) {
@@ -29,11 +31,13 @@ export function StorefrontShelfCard({
   compareAtCents,
   image,
   quantity,
+  featuredStockOverlay = false,
 }: StorefrontShelfCardProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,#0f1524,#0a0f1a)] shadow-[0_18px_40px_rgba(2,6,16,0.38)]">
       <Link href={`/product/${slug}`} className="block border-b border-white/8">
-        <div className="flex aspect-[1.15] items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_68%)] p-5">
+        <div className="relative flex aspect-[1.15] items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_68%)] p-5">
+          {featuredStockOverlay ? <FeaturedStockOverlay quantity={quantity} /> : null}
           {image ? (
             <img src={image} alt={name} className="max-h-full w-auto object-contain" />
           ) : (
