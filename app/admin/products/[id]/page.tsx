@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ProductForm } from "../ProductForm";
 import { getAllCategoriesWithParent, toAllOptions } from "@/lib/admin";
+import { getDisplayProductName } from "@/lib/product-display";
 
 export const dynamic = "force-dynamic";
 
@@ -19,18 +20,20 @@ export default async function EditProductPage({ params }: { params: { id: string
   if (!product) return notFound();
 
   const options = toAllOptions(categories);
+  const displayName = getDisplayProductName(product.name, product.sourceSetName);
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="font-display text-3xl font-bold text-white">Edit Product</h1>
-        <p className="text-sm text-gray-400">{product.name}</p>
+        <p className="text-sm text-gray-300">{displayName}</p>
+        {product.sourceSetName && <p className="text-xs text-gray-500">{product.sourceSetName}</p>}
       </div>
       <ProductForm
         categories={options}
         initial={{
           id: product.id,
-          name: product.name,
+          name: getDisplayProductName(product.name, product.sourceSetName),
           slug: product.slug,
           description: product.description,
           priceCents: product.priceCents,

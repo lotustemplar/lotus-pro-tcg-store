@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents, slugify } from "@/lib/format";
 import type { CategoryOption } from "@/lib/admin";
+import { getDisplayProductName } from "@/lib/product-display";
 import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 
 type ImageRow = { url: string; altText: string };
@@ -268,7 +269,9 @@ export function ProductForm({
 
       return {
         ...current,
-        name: data.name ?? current.name,
+        name: data.name
+          ? getDisplayProductName(data.name, data.sourceSetName ?? current.sourceSetName)
+          : current.name,
         slug: slugTouched ? current.slug : data.slug ?? current.slug,
         description: data.description ?? current.description,
         priceCents: data.priceCents ?? current.priceCents,

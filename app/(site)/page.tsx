@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Carousel } from "@/components/Carousel";
 import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
 import { StorefrontShelfCard } from "@/components/StorefrontShelfCard";
+import { getDisplayProductName } from "@/lib/product-display";
 import {
   getFeaturedProducts,
   getHomeCategoryPreviews,
-  getStorefrontProductName,
   toCardProps,
 } from "@/lib/products";
 import { getSiteSettings } from "@/lib/site-settings";
@@ -53,7 +53,7 @@ function HeroFeaturedProductCard({
     images: { url: string }[];
   };
 }) {
-  const displayName = getStorefrontProductName(product.name, product.sourceSetName);
+  const displayName = getDisplayProductName(product.name, product.sourceSetName);
 
   return (
     <Link
@@ -275,7 +275,7 @@ export default async function HomePage() {
               id={product.id}
               slug={product.slug}
               name={product.name}
-              displayName={getStorefrontProductName(product.name, product.sourceSetName)}
+              displayName={getDisplayProductName(product.name, product.sourceSetName)}
               setName={product.sourceSetName}
               priceCents={product.priceCents}
               compareAtCents={product.compareAtCents}

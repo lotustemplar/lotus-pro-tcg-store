@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { getAllCategoriesWithParent } from "@/lib/admin";
+import { getDisplayProductName } from "@/lib/product-display";
 import { ProductsManager } from "./ProductsManager";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export default async function AdminProductsPage() {
         leafCategories={leafCategories}
         initialProducts={products.map((product) => ({
           id: product.id,
-          name: product.name,
+          name: getDisplayProductName(product.name, product.sourceSetName),
           priceCents: product.priceCents,
           sourceMarketplace: product.sourceMarketplace,
           sourceSetName: product.sourceSetName,
