@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HeroFeaturedProductCard } from "./HeroFeaturedProductCard";
 import { StorefrontShelfCard } from "./StorefrontShelfCard";
 import { getDisplayProductName } from "@/lib/product-display";
@@ -83,49 +83,48 @@ function useFeaturedRotation(products: FeaturedProduct[]) {
   const batchCount = useMemo(() => getBatchCount(products.length), [products.length]);
   const [batchIndex, setBatchIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const timerRef = useRef<number | null>(null);
-  const pendingRef = useRef<number | null>(null);
+  const autoTimerRef = useRef<number | null>(null);
+  const transitionTimerRef = useRef<number | null>(null);
+  const isTransitioningRef = useRef(false);
 
-  const clearPending = useCallback(() => {
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
+  function clearTimers() {
+    if (autoTimerRef.current) {
+      window.clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = null;
     }
-    if (pendingRef.current) {
-      window.clearTimeout(pendingRef.current);
-      pendingRef.current = null;
+    if (transitionTimerRef.current) {
+      window.clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
     }
-  }, []);
+  }
 
-  const transitionTo = useCallback(
-    (nextIndex: number) => {
-      if (batchCount <= 1) return;
-      clearPending();
-      setIsTransitioning(true);
-      pendingRef.current = window.setTimeout(() => {
-        setBatchIndex(nextIndex);
-        setIsTransitioning(false);
-      }, TRANSITION_MS / 2);
-    },
-    [batchCount, clearPending],
-  );
+  function goToIndex(nextIndex: number) {
+    if (batchCount <= 1 || isTransitioningRef.current) return;
+    const normalized = ((nextIndex % batchCount) + batchCount) % batchCount;
+    if (normalized === batchIndex) return;
 
-  const goToIndex = useCallback(
-    (nextIndex: number) => {
-      const normalized = ((nextIndex % batchCount) + batchCount) % batchCount;
-      if (normalized === batchIndex || isTransitioning) return;
-      transitionTo(normalized);
-    },
-    [batchCount, batchIndex, isTransitioning, transitionTo],
-  );
+    if (autoTimerRef.current) {
+      window.clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = null;
+    }
 
-  const goNext = useCallback(() => {
+    isTransitioningRef.current = true;
+    setIsTransitioning(true);
+    transitionTimerRef.current = window.setTimeout(() => {
+      setBatchIndex(normalized);
+      setIsTransitioning(false);
+      isTransitioningRef.current = false;
+      transitionTimerRef.current = null;
+    }, TRANSITION_MS / 2);
+  }
+
+  function goNext() {
     goToIndex(batchIndex + 1);
-  }, [batchIndex, goToIndex]);
+  }
 
-  const goPrevious = useCallback(() => {
+  function goPrevious() {
     goToIndex(batchIndex - 1);
-  }, [batchIndex, goToIndex]);
+  }
 
   useEffect(() => {
     if (batchIndex >= batchCount) {
@@ -135,15 +134,27 @@ function useFeaturedRotation(products: FeaturedProduct[]) {
 
   useEffect(() => {
     if (batchCount <= 1) return;
-    clearPending();
-    timerRef.current = window.setTimeout(() => {
+    if (autoTimerRef.current) {
+      window.clearTimeout(autoTimerRef.current);
+    }
+    autoTimerRef.current = window.setTimeout(() => {
       goToIndex(batchIndex + 1);
     }, ROTATE_MS);
 
-    return clearPending;
-  }, [batchCount, batchIndex, clearPending, goToIndex]);
+    return () => {
+      if (autoTimerRef.current) {
+        window.clearTimeout(autoTimerRef.current);
+        autoTimerRef.current = null;
+      }
+    };
+  }, [batchCount, batchIndex]);
 
-  useEffect(() => clearPending, [clearPending]);
+  useEffect(
+    () => () => {
+      clearTimers();
+    },
+    [],
+  );
 
   return {
     batchCount,
