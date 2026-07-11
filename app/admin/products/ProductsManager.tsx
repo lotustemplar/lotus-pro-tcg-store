@@ -617,12 +617,13 @@ export function ProductsManager({
               </div>
             </summary>
 
-            <div className="overflow-x-auto border-t border-border">
-              <table className="w-full min-w-[1260px] text-left text-sm">
+            <div className="max-w-full overflow-x-auto overscroll-x-contain border-t border-border pb-3 [scrollbar-gutter:stable]">
+              <table className="w-full min-w-[1660px] text-left text-sm">
                 <thead className="bg-bg/70 text-gray-400">
                   <tr>
                     <th className="px-4 py-3"></th>
                     <th className="px-4 py-3">IP</th>
+                    <th className="px-4 py-3">Set</th>
                     <th className="px-4 py-3">Name of Product</th>
                     <th className="px-4 py-3">Category</th>
                     <th className="px-4 py-3">Price</th>
@@ -671,18 +672,24 @@ export function ProductsManager({
                           </select>
                         </td>
                         <td className="px-4 py-3">
+                          <div className="min-w-[280px] max-w-[320px] space-y-2">
+                            <p className="text-sm font-medium leading-6 text-white">
+                              {product.sourceSetName || "Manual / No set"}
+                            </p>
+                            <div className="space-y-1 text-xs text-gray-500">
+                              <p>{isTracked ? "TCGplayer tracked" : "Manual product"}</p>
+                              <p>{product.sourceProductType || "Type unavailable"}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
                           <input
                             value={product.name}
                             onChange={(event) => setProductField(product.id, "name", event.target.value)}
-                            className="w-full min-w-[220px] rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                            className="w-full min-w-[340px] rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                           />
                           <div className="mt-2 space-y-1 text-xs text-gray-500">
-                            <p>{isTracked ? "TCGplayer tracked" : "Manual product"}</p>
-                            {(product.sourceSetName || product.sourceProductType) && (
-                              <p>
-                                {[product.sourceSetName, product.sourceProductType].filter(Boolean).join(" / ")}
-                              </p>
-                            )}
+                            <p>Product title only. Set is shown in its own column.</p>
                             <p>
                               <Link
                                 href={`/admin/products/${product.id}`}
