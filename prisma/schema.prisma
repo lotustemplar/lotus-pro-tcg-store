@@ -136,7 +136,7 @@ model SiteSettings {
   heroSlidesJson              String   @default("[]")
   heroEyebrow                 String   @default("Expert-Built - Limited Runs - Every Major TCG")
   heroTitle                   String   @default("Your Store for MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz")
-  heroDescription             String   @default("Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more - shipped fast with a flat $5.99 rate, free over $150.")
+  heroDescription             String   @default("Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more - shipped fast with a flat $5.99 rate, free over $75.")
   heroPrimaryLabel            String   @default("Shop Magic")
   heroPrimaryHref             String   @default("/category/magic-the-gathering")
   heroSecondaryLabel          String   @default("View Featured")
@@ -156,10 +156,10 @@ model SiteSettings {
   footerFaqLabel              String   @default("FAQ")
   footerFaqHref               String   @default("/faq")
   footerShippingLinePrimary   String   @default("Flat rate: $5.99 on every order.")
-  footerShippingLineHighlight String   @default("Free shipping on orders over $150.")
+  footerShippingLineHighlight String   @default("Free shipping on orders over $75.")
   footerLegalText             String   @default("Copyright {year} {brandName}. Not affiliated with Wizards of the Coast, Pokemon Company, Bandai, Riot Games, or Bushiroad.")
   footerBottomPromoLeft       String   @default("$5.99 flat shipping")
-  footerBottomPromoRight      String   @default("Free shipping over $150")
+  footerBottomPromoRight      String   @default("Free shipping over $75")
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
 }

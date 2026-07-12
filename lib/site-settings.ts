@@ -3,6 +3,18 @@ import { prisma } from "./prisma";
 export const SITE_SETTINGS_ID = "site";
 const LEGACY_BRAND_NAME = "Lotus Pro Decks";
 const CURRENT_BRAND_NAME = "Lotus Pro TCG";
+const LEGACY_FREE_SHIPPING_COPY = {
+  heroDescription:
+    "Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more - shipped fast with a flat $5.99 rate, free over $150.",
+  footerShippingLineHighlight: "Free shipping on orders over $150.",
+  footerBottomPromoRight: "Free shipping over $150",
+} as const;
+const CURRENT_FREE_SHIPPING_COPY = {
+  heroDescription:
+    "Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more - shipped fast with a flat $5.99 rate, free over $75.",
+  footerShippingLineHighlight: "Free shipping on orders over $75.",
+  footerBottomPromoRight: "Free shipping over $75",
+} as const;
 
 export type HeroSlide = {
   id: string;
@@ -56,8 +68,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   heroSlides: [],
   heroEyebrow: "Expert-Built - Limited Runs - Every Major TCG",
   heroTitle: "Your Store for MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz",
-  heroDescription:
-    "Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more - shipped fast with a flat $5.99 rate, free over $150.",
+  heroDescription: CURRENT_FREE_SHIPPING_COPY.heroDescription,
   heroPrimaryLabel: "Shop Magic",
   heroPrimaryHref: "/category/magic-the-gathering",
   heroSecondaryLabel: "View Featured",
@@ -79,15 +90,31 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   footerFaqLabel: "FAQ",
   footerFaqHref: "/faq",
   footerShippingLinePrimary: "Flat rate: $5.99 on every order.",
-  footerShippingLineHighlight: "Free shipping on orders over $150.",
+  footerShippingLineHighlight: CURRENT_FREE_SHIPPING_COPY.footerShippingLineHighlight,
   footerLegalText:
     "Copyright {year} {brandName}. Not affiliated with Wizards of the Coast, Pokemon Company, Bandai, Riot Games, or Bushiroad.",
   footerBottomPromoLeft: "$5.99 flat shipping",
-  footerBottomPromoRight: "Free shipping over $150",
+  footerBottomPromoRight: CURRENT_FREE_SHIPPING_COPY.footerBottomPromoRight,
 };
 
 function normalizeLegacyBrandValue(value: string) {
   return value.replaceAll(LEGACY_BRAND_NAME, CURRENT_BRAND_NAME);
+}
+
+function normalizeLegacyFreeShippingCopy(value: string) {
+  if (value === LEGACY_FREE_SHIPPING_COPY.heroDescription) {
+    return CURRENT_FREE_SHIPPING_COPY.heroDescription;
+  }
+
+  if (value === LEGACY_FREE_SHIPPING_COPY.footerShippingLineHighlight) {
+    return CURRENT_FREE_SHIPPING_COPY.footerShippingLineHighlight;
+  }
+
+  if (value === LEGACY_FREE_SHIPPING_COPY.footerBottomPromoRight) {
+    return CURRENT_FREE_SHIPPING_COPY.footerBottomPromoRight;
+  }
+
+  return value;
 }
 
 type SiteSettingsRecord =
@@ -246,8 +273,11 @@ export function mergeSiteSettings(record: SiteSettingsRecord): SiteSettings {
   return {
     ...merged,
     brandName: normalizeLegacyBrandValue(merged.brandName),
+    heroDescription: normalizeLegacyFreeShippingCopy(merged.heroDescription),
     siteMetaTitle: normalizeLegacyBrandValue(merged.siteMetaTitle),
+    footerShippingLineHighlight: normalizeLegacyFreeShippingCopy(merged.footerShippingLineHighlight),
     footerLegalText: normalizeLegacyBrandValue(merged.footerLegalText),
+    footerBottomPromoRight: normalizeLegacyFreeShippingCopy(merged.footerBottomPromoRight),
   };
 }
 
