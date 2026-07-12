@@ -193,7 +193,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   let patchData: Record<string, unknown> = parsed.data;
 
   if (existing.sourceMarketplace === "tcgplayer") {
-    const nextAutoUpdatePrice = parsed.data.autoUpdatePrice ?? existing.autoUpdatePrice;
+    const hasExplicitPriceOverride = typeof parsed.data.priceCents === "number";
+    const nextAutoUpdatePrice =
+      parsed.data.autoUpdatePrice ?? (hasExplicitPriceOverride ? false : existing.autoUpdatePrice);
     const nextPriceCents = parsed.data.priceCents ?? existing.priceCents;
     const pricing = applyTrackedTcgplayerPricing({
       autoUpdatePrice: nextAutoUpdatePrice,
@@ -203,6 +205,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     patchData = {
       ...parsed.data,
+      autoUpdatePrice: nextAutoUpdatePrice,
       compareAtCents: pricing.compareAtCents,
       ...(nextAutoUpdatePrice ? { priceCents: pricing.priceCents } : {}),
     };

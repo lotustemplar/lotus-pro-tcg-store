@@ -146,7 +146,7 @@ export function ProductsManager({
   function handlePriceDraftChange(id: string, rawValue: string) {
     const product = productsById.get(id);
     if (product?.sourceMarketplace === "tcgplayer" && product.autoUpdatePrice) {
-      return;
+      setProductField(id, "autoUpdatePrice", false);
     }
 
     const sanitized = sanitizeCurrencyInput(rawValue);
@@ -164,15 +164,6 @@ export function ProductsManager({
   }
 
   function handlePriceDraftBlur(product: AdminProduct) {
-    if (product.sourceMarketplace === "tcgplayer" && product.autoUpdatePrice) {
-      setPriceDrafts((current) => {
-        const next = { ...current };
-        delete next[product.id];
-        return next;
-      });
-      return;
-    }
-
     const draft = priceDrafts[product.id];
     const normalized = sanitizeCurrencyInput(draft ?? "");
     const priceCents =
@@ -641,7 +632,7 @@ export function ProductsManager({
               </div>
             </summary>
 
-            <div className="max-w-full overflow-x-scroll overscroll-x-contain border-t border-border pb-4 [scrollbar-gutter:stable]">
+            <div className="admin-scrollbar max-w-full overflow-x-scroll overscroll-x-contain border-t border-border pb-4 [scrollbar-gutter:stable]">
               <table className="w-full min-w-[1760px] text-left text-sm">
                 <thead className="bg-bg/70 text-gray-400">
                   <tr>
@@ -744,14 +735,13 @@ export function ProductsManager({
                             value={visiblePriceValue(product)}
                             onChange={(event) => handlePriceDraftChange(product.id, event.target.value)}
                             onBlur={() => handlePriceDraftBlur(product)}
-                            disabled={isTracked && product.autoUpdatePrice}
-                            className="w-28 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="w-28 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                           />
                           <div className="mt-2 space-y-1 text-xs text-gray-500">
                             <p>Store: {formatCents(product.priceCents)}</p>
                             {product.sourcePriceCents != null && <p>TCG: {formatCents(product.sourcePriceCents)}</p>}
                             {isTracked && product.autoUpdatePrice && (
-                              <p className="text-amber-300">Auto price is on. Disable it to set a manual price.</p>
+                              <p className="text-amber-300">Typing a new price here switches this item to manual pricing.</p>
                             )}
                             <p>{formatTimestamp(product.lastSyncedAt)}</p>
                           </div>

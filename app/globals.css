@@ -99,6 +99,27 @@ body::after {
 ::-webkit-scrollbar-track { background: #0A0E1A; }
 ::-webkit-scrollbar-thumb { background: #3a2f5c; border-radius: 8px; }
 
+.admin-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: #6d4fd6 #0a0e1a;
+}
+
+.admin-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.admin-scrollbar::-webkit-scrollbar-track {
+  background: #0a0e1a;
+  border-radius: 9999px;
+}
+
+.admin-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  border-radius: 9999px;
+  border: 2px solid #0a0e1a;
+}
+
 @keyframes featuredFirePulse {
   0% {
     transform: scale(0.98);
