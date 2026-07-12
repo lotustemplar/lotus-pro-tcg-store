@@ -71,6 +71,7 @@ type TcgplayerListingsResponse = {
   results?: Array<{
     results?: Array<{
       sellerName?: string | null;
+      listingType?: string | null;
       price?: number | null;
       shippingPrice?: number | null;
       rankedShippingPrice?: number | null;
@@ -202,7 +203,10 @@ export async function fetchTcgplayerTopListing(productId: number): Promise<Tcgpl
     headers: TCGPLAYER_LISTINGS_API_HEADERS,
     body: JSON.stringify({
       filters: {
-        term: {},
+        term: {
+          // Ignore TCGplayer custom listings such as "box only" or altered-language bundles.
+          listingType: ["standard"],
+        },
         range: {},
         exclude: {},
       },
@@ -229,7 +233,7 @@ export async function fetchTcgplayerTopListing(productId: number): Promise<Tcgpl
   const listing = data.results?.[0]?.results?.[0];
   const price = positiveNumber(listing?.price);
 
-  if (price == null) {
+  if (price == null || normalizeText(listing?.listingType ?? "") !== "standard") {
     return null;
   }
 
