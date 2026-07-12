@@ -34,6 +34,12 @@ type AdminProduct = {
   categoryId: string;
 };
 
+type ProductUpdateResponse = {
+  ok: boolean;
+  product?: AdminProduct;
+  error?: string;
+};
+
 type ProductsManagerProps = {
   topLevels: TopLevelCategory[];
   leafCategories: LeafCategory[];
@@ -138,6 +144,11 @@ export function ProductsManager({
   }
 
   function handlePriceDraftChange(id: string, rawValue: string) {
+    const product = productsById.get(id);
+    if (product?.sourceMarketplace === "tcgplayer" && product.autoUpdatePrice) {
+      return;
+    }
+
     const sanitized = sanitizeCurrencyInput(rawValue);
     setPriceDrafts((current) => ({ ...current, [id]: sanitized }));
 
@@ -153,6 +164,15 @@ export function ProductsManager({
   }
 
   function handlePriceDraftBlur(product: AdminProduct) {
+    if (product.sourceMarketplace === "tcgplayer" && product.autoUpdatePrice) {
+      setPriceDrafts((current) => {
+        const next = { ...current };
+        delete next[product.id];
+        return next;
+      });
+      return;
+    }
+
     const draft = priceDrafts[product.id];
     const normalized = sanitizeCurrencyInput(draft ?? "");
     const priceCents =
@@ -239,8 +259,9 @@ export function ProductsManager({
       }),
     });
 
+    const data = (await response.json().catch(() => ({}))) as ProductUpdateResponse;
+
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
       setMessage({
         type: "error",
         text: typeof data.error === "string" ? data.error : `Failed to save ${product.name}.`,
@@ -249,7 +270,10 @@ export function ProductsManager({
       return;
     }
 
-    setSavedProducts((current) => current.map((entry) => (entry.id === id ? { ...product } : entry)));
+    const savedProduct = data.product ?? product;
+
+    setProducts((current) => current.map((entry) => (entry.id === id ? { ...savedProduct } : entry)));
+    setSavedProducts((current) => current.map((entry) => (entry.id === id ? { ...savedProduct } : entry)));
     setPriceDrafts((current) => {
       const next = { ...current };
       delete next[id];
@@ -720,11 +744,15 @@ export function ProductsManager({
                             value={visiblePriceValue(product)}
                             onChange={(event) => handlePriceDraftChange(product.id, event.target.value)}
                             onBlur={() => handlePriceDraftBlur(product)}
-                            className="w-28 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                            disabled={isTracked && product.autoUpdatePrice}
+                            className="w-28 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
                           />
                           <div className="mt-2 space-y-1 text-xs text-gray-500">
                             <p>Store: {formatCents(product.priceCents)}</p>
                             {product.sourcePriceCents != null && <p>TCG: {formatCents(product.sourcePriceCents)}</p>}
+                            {isTracked && product.autoUpdatePrice && (
+                              <p className="text-amber-300">Auto price is on. Disable it to set a manual price.</p>
+                            )}
                             <p>{formatTimestamp(product.lastSyncedAt)}</p>
                           </div>
                         </td>

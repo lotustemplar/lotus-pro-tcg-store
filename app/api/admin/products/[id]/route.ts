@@ -70,6 +70,40 @@ function normalizeProductInput(data: z.infer<typeof productSchema>) {
   return normalized;
 }
 
+function toAdminProductPayload(product: {
+  id: string;
+  name: string;
+  priceCents: number;
+  sourceMarketplace: string | null;
+  sourceSetName: string | null;
+  sourceProductType: string | null;
+  sourcePriceCents: number | null;
+  autoUpdatePrice: boolean;
+  lastSyncedAt: Date | null;
+  lastSyncError: string | null;
+  quantity: number;
+  featuredOnHome: boolean;
+  isActive: boolean;
+  categoryId: string;
+}) {
+  return {
+    id: product.id,
+    name: product.name,
+    priceCents: product.priceCents,
+    sourceMarketplace: product.sourceMarketplace,
+    sourceSetName: product.sourceSetName,
+    sourceProductType: product.sourceProductType,
+    sourcePriceCents: product.sourcePriceCents,
+    autoUpdatePrice: product.autoUpdatePrice,
+    lastSyncedAt: product.lastSyncedAt?.toISOString() ?? null,
+    lastSyncError: product.lastSyncError,
+    quantity: product.quantity,
+    featuredOnHome: product.featuredOnHome,
+    isActive: product.isActive,
+    categoryId: product.categoryId,
+  };
+}
+
 const inlineProductSchema = z
   .object({
     name: z.string().min(1).optional(),
@@ -174,12 +208,28 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     };
   }
 
-  await prisma.product.update({
+  const updated = await prisma.product.update({
     where: { id: params.id },
     data: patchData,
+    select: {
+      id: true,
+      name: true,
+      priceCents: true,
+      sourceMarketplace: true,
+      sourceSetName: true,
+      sourceProductType: true,
+      sourcePriceCents: true,
+      autoUpdatePrice: true,
+      lastSyncedAt: true,
+      lastSyncError: true,
+      quantity: true,
+      featuredOnHome: true,
+      isActive: true,
+      categoryId: true,
+    },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, product: toAdminProductPayload(updated) });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
