@@ -596,7 +596,7 @@ export function ProductsManager({
           <details
             key={topLevel.id}
             open
-            className="overflow-hidden rounded-xl border border-border bg-bg-panel"
+            className="rounded-xl border border-border bg-bg-panel"
           >
             <summary className="cursor-pointer list-none bg-bg-panel px-5 py-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -617,8 +617,8 @@ export function ProductsManager({
               </div>
             </summary>
 
-            <div className="max-w-full overflow-x-auto overscroll-x-contain border-t border-border pb-3 [scrollbar-gutter:stable]">
-              <table className="w-full min-w-[1660px] text-left text-sm">
+            <div className="max-w-full overflow-x-scroll overscroll-x-contain border-t border-border pb-4 [scrollbar-gutter:stable]">
+              <table className="w-full min-w-[1760px] text-left text-sm">
                 <thead className="bg-bg/70 text-gray-400">
                   <tr>
                     <th className="px-4 py-3"></th>

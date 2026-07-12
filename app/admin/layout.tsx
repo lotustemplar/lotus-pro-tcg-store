@@ -42,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <LogoutButton />
               </div>
             </aside>
-            <main className="flex-1 px-8 py-8">{children}</main>
+            <main className="min-w-0 flex-1 overflow-x-auto px-8 py-8">{children}</main>
           </div>
         ) : (
           <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>
