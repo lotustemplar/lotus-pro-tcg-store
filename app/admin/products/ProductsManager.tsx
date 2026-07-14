@@ -51,6 +51,10 @@ type Message = {
   text: string;
 };
 
+function isSyncWarning(message: string | null) {
+  return typeof message === "string" && message.startsWith("Warning:");
+}
+
 type BulkCategoryState = {
   topLevelId: string;
   categoryId: string;
@@ -401,7 +405,7 @@ export function ProductsManager({
 
     setMessage({
       type: "success",
-      text: `Scanned ${data.scanned ?? 0} tracked product(s). Updated ${data.updatedPrices ?? 0} storefront price(s).`,
+      text: `Scanned ${data.scanned ?? 0} tracked product(s). Updated ${data.updatedPrices ?? 0} storefront price(s).${(data.warnings ?? 0) > 0 ? ` Flagged ${data.warnings} warning(s).` : ""}`,
     });
     setSyncingSourcePrices(false);
     router.refresh();
@@ -822,7 +826,11 @@ export function ProductsManager({
                           </div>
                           <div className="mt-2 space-y-1 text-xs text-gray-500">
                             <p>{dirty ? "Unsaved changes" : categoryName(product.categoryId)}</p>
-                            {product.lastSyncError && <p className="text-red-300">{product.lastSyncError}</p>}
+                            {product.lastSyncError && (
+                              <p className={isSyncWarning(product.lastSyncError) ? "text-amber-300" : "text-red-300"}>
+                                {product.lastSyncError}
+                              </p>
+                            )}
                           </div>
                         </td>
                       </tr>

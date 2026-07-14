@@ -99,6 +99,7 @@ export type ResolvedTcgplayerSourcePrice = {
   sourcePriceCents: number;
   usedShippingInclusivePrice: boolean;
   topListing: TcgplayerTopListing | null;
+  warningMessage: string | null;
 };
 
 function normalizeListing(
@@ -159,6 +160,10 @@ function isSuspiciousOutlier({
   }
 
   return false;
+}
+
+function formatListingAmount(listing: TcgplayerTopListing) {
+  return `$${listing.totalPrice.toFixed(2)}`;
 }
 
 function normalizeText(value: string) {
@@ -355,6 +360,20 @@ export async function fetchResolvedTcgplayerPricing(
       });
     }) ?? null;
 
+  const skippedSuspiciousListings = topListings.filter((candidate, index) => {
+    const nextCandidate = topListings[index + 1] ?? null;
+    return isSuspiciousOutlier({
+      candidate,
+      nextCandidate,
+      details: firstDetails,
+    });
+  });
+
+  const warningMessage =
+    skippedSuspiciousListings.length > 0
+      ? `Warning: Skipped suspicious low TCGplayer listing(s) and used ${resolvedTopListing ? formatListingAmount(resolvedTopListing) : "a safer fallback"} instead.`
+      : null;
+
   if (resolvedTopListing) {
     return {
       details: firstDetails,
@@ -363,6 +382,7 @@ export async function fetchResolvedTcgplayerPricing(
         sourcePriceCents: toCents(resolvedTopListing.totalPrice),
         usedShippingInclusivePrice: resolvedTopListing.shippingPrice > 0,
         topListing: resolvedTopListing,
+        warningMessage,
       },
     };
   }
@@ -385,6 +405,8 @@ export async function fetchResolvedTcgplayerPricing(
         sourcePriceCents: toCents(Math.max(...shippingInclusiveCandidates)),
         usedShippingInclusivePrice: true,
         topListing: null,
+        warningMessage:
+          warningMessage ?? "Warning: Used TCGplayer summary pricing because listing-level pricing was unavailable.",
       },
     };
   }
@@ -414,6 +436,8 @@ export async function fetchResolvedTcgplayerPricing(
           sourcePriceCents: previousSourcePriceCents,
           usedShippingInclusivePrice: false,
           topListing: null,
+          warningMessage:
+            warningMessage ?? "Warning: Preserved the previous tracked price because fresh listing pricing looked unsafe.",
         },
       };
     }
@@ -427,6 +451,8 @@ export async function fetchResolvedTcgplayerPricing(
         sourcePriceCents: toCents(fallbackMarketPrice),
         usedShippingInclusivePrice: false,
         topListing: null,
+        warningMessage:
+          warningMessage ?? "Warning: Fell back to TCGplayer market price because listing-level pricing was unavailable.",
       },
     };
   }
@@ -438,6 +464,8 @@ export async function fetchResolvedTcgplayerPricing(
       sourcePriceCents: toCents(fallbackLowestPrice ?? 0),
       usedShippingInclusivePrice: false,
       topListing: null,
+      warningMessage:
+        warningMessage ?? "Warning: Fell back to TCGplayer lowest price because safer pricing data was unavailable.",
     },
   };
 }

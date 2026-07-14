@@ -25,6 +25,7 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
   let synced = 0;
   let failed = 0;
   let updatedPrices = 0;
+  let warnings = 0;
 
   for (const product of trackedProducts) {
     if (!product.sourceProductId) continue;
@@ -52,12 +53,13 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
           sourceProductType: details.productTypeName?.trim() ?? null,
           sourceSetName: details.setName?.trim() ?? null,
           lastSyncedAt: new Date(),
-          lastSyncError: null,
+          lastSyncError: resolved.warningMessage,
         },
       });
 
       synced += 1;
       if (product.autoUpdatePrice) updatedPrices += 1;
+      if (resolved.warningMessage) warnings += 1;
     } catch (error) {
       failed += 1;
       await prisma.product.update({
@@ -75,5 +77,6 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
     scanned: trackedProducts.length,
     synced,
     updatedPrices,
+    warnings,
   };
 }
