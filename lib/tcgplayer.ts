@@ -101,6 +101,66 @@ export type ResolvedTcgplayerSourcePrice = {
   topListing: TcgplayerTopListing | null;
 };
 
+function normalizeListing(
+  listing:
+    | {
+        sellerName?: string | null;
+        listingType?: string | null;
+        price?: number | null;
+        shippingPrice?: number | null;
+        rankedShippingPrice?: number | null;
+        sellerShippingPrice?: number | null;
+        quantity?: number | null;
+      }
+    | null
+    | undefined,
+): TcgplayerTopListing | null {
+  const price = positiveNumber(listing?.price);
+  if (price == null || normalizeText(listing?.listingType ?? "") !== "standard") {
+    return null;
+  }
+
+  const shippingPrice =
+    nonNegativeNumber(listing?.shippingPrice) ??
+    nonNegativeNumber(listing?.rankedShippingPrice) ??
+    nonNegativeNumber(listing?.sellerShippingPrice) ??
+    0;
+  const quantity = Math.max(0, Math.trunc(nonNegativeNumber(listing?.quantity) ?? 0));
+
+  return {
+    sellerName: listing?.sellerName?.trim() || "TCGplayer seller",
+    price,
+    shippingPrice,
+    quantity,
+    totalPrice: Number((price + shippingPrice).toFixed(2)),
+  };
+}
+
+function isSuspiciousOutlier({
+  candidate,
+  nextCandidate,
+  details,
+}: {
+  candidate: TcgplayerTopListing;
+  nextCandidate: TcgplayerTopListing | null;
+  details: TcgplayerProductDetails;
+}) {
+  const detailsFloor =
+    positiveNumber(details.lowestPriceWithShipping) ??
+    positiveNumber(details.marketPrice) ??
+    positiveNumber(details.lowestPrice);
+
+  if (detailsFloor != null && candidate.totalPrice < detailsFloor * 0.85) {
+    return true;
+  }
+
+  if (nextCandidate && candidate.totalPrice < nextCandidate.totalPrice * 0.85) {
+    return true;
+  }
+
+  return false;
+}
+
 function normalizeText(value: string) {
   return value.trim().toLowerCase();
 }
@@ -211,7 +271,7 @@ export async function fetchTcgplayerTopListing(productId: number): Promise<Tcgpl
         exclude: {},
       },
       from: 0,
-      size: 1,
+      size: 8,
       sort: {
         field: "price+shipping",
         order: "asc",
@@ -230,27 +290,11 @@ export async function fetchTcgplayerTopListing(productId: number): Promise<Tcgpl
   }
 
   const data = (await response.json()) as TcgplayerListingsResponse;
-  const listing = data.results?.[0]?.results?.[0];
-  const price = positiveNumber(listing?.price);
+  const listings = (data.results?.[0]?.results ?? [])
+    .map((listing) => normalizeListing(listing))
+    .filter((listing): listing is TcgplayerTopListing => listing != null);
 
-  if (price == null || normalizeText(listing?.listingType ?? "") !== "standard") {
-    return null;
-  }
-
-  const shippingPrice =
-    nonNegativeNumber(listing?.shippingPrice) ??
-    nonNegativeNumber(listing?.rankedShippingPrice) ??
-    nonNegativeNumber(listing?.sellerShippingPrice) ??
-    0;
-  const quantity = Math.max(0, Math.trunc(nonNegativeNumber(listing?.quantity) ?? 0));
-
-  return {
-    sellerName: listing?.sellerName?.trim() || "TCGplayer seller",
-    price,
-    shippingPrice,
-    quantity,
-    totalPrice: Number((price + shippingPrice).toFixed(2)),
-  };
+  return listings[0] ?? null;
 }
 
 export async function fetchResolvedTcgplayerPricing(
@@ -260,19 +304,65 @@ export async function fetchResolvedTcgplayerPricing(
   details: TcgplayerProductDetails;
   resolved: ResolvedTcgplayerSourcePrice;
 }> {
-  const [firstDetails, topListing] = await Promise.all([
+  const [firstDetails, topListingsResponse] = await Promise.all([
     fetchTcgplayerProductDetails(productId),
-    fetchTcgplayerTopListing(productId).catch(() => null),
+    fetch(`https://mp-search-api.tcgplayer.com/v1/product/${productId}/listings`, {
+      method: "POST",
+      headers: TCGPLAYER_LISTINGS_API_HEADERS,
+      body: JSON.stringify({
+        filters: {
+          term: {
+            // Ignore TCGplayer custom listings such as "box only" or altered-language bundles.
+            listingType: ["standard"],
+          },
+          range: {},
+          exclude: {},
+        },
+        from: 0,
+        size: 8,
+        sort: {
+          field: "price+shipping",
+          order: "asc",
+        },
+        context: {
+          shippingCountry: "US",
+          cart: {},
+        },
+        aggregations: ["listingType"],
+      }),
+      next: { revalidate: 0 },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`TCGplayer listings lookup failed with status ${response.status}.`);
+        }
+        return response.json() as Promise<TcgplayerListingsResponse>;
+      })
+      .catch(() => null),
   ]);
 
-  if (topListing) {
+  const topListings = (topListingsResponse?.results?.[0]?.results ?? [])
+    .map((listing) => normalizeListing(listing))
+    .filter((listing): listing is TcgplayerTopListing => listing != null);
+
+  const resolvedTopListing =
+    topListings.find((candidate, index) => {
+      const nextCandidate = topListings[index + 1] ?? null;
+      return !isSuspiciousOutlier({
+        candidate,
+        nextCandidate,
+        details: firstDetails,
+      });
+    }) ?? null;
+
+  if (resolvedTopListing) {
     return {
       details: firstDetails,
       resolved: {
         priceSource: "topListingPriceWithShipping",
-        sourcePriceCents: toCents(topListing.totalPrice),
-        usedShippingInclusivePrice: topListing.shippingPrice > 0,
-        topListing,
+        sourcePriceCents: toCents(resolvedTopListing.totalPrice),
+        usedShippingInclusivePrice: resolvedTopListing.shippingPrice > 0,
+        topListing: resolvedTopListing,
       },
     };
   }
