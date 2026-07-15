@@ -200,11 +200,11 @@ export function MobileHeroFeaturedWidget({ products }: { products: FeaturedProdu
   if (!activeProduct) return null;
 
   return (
-    <div className="space-y-3 rounded-[26px] border border-white/12 bg-[linear-gradient(180deg,rgba(7,10,18,0.74),rgba(7,10,18,0.94))] p-3 shadow-[0_24px_70px_rgba(2,6,16,0.48)] backdrop-blur-xl">
+    <div className="hot-products-card space-y-3 rounded-[26px] border border-red-300/45 bg-[linear-gradient(180deg,rgba(20,9,8,0.78),rgba(7,10,18,0.96))] p-3 shadow-[0_24px_70px_rgba(2,6,16,0.48)] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-200/80">
-            Featured Right Now
+          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-100 drop-shadow-[0_0_10px_rgba(251,146,60,0.42)]">
+            HOT PRODCUTS!
           </p>
         </div>
         <div className="flex items-center gap-2">

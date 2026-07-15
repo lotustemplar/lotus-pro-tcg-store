@@ -143,3 +143,31 @@ body::after {
       0 0 28px rgba(239, 68, 68, 0.2);
   }
 }
+
+@keyframes hotProductsBorderPulse {
+  0% {
+    box-shadow:
+      0 0 0 1px rgba(254, 215, 170, 0.16),
+      0 0 18px rgba(249, 115, 22, 0.28),
+      0 0 34px rgba(239, 68, 68, 0.18),
+      0 24px 70px rgba(2, 6, 16, 0.48);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 237, 213, 0.28),
+      0 0 28px rgba(251, 146, 60, 0.52),
+      0 0 54px rgba(239, 68, 68, 0.34),
+      0 24px 70px rgba(2, 6, 16, 0.54);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(254, 215, 170, 0.16),
+      0 0 18px rgba(249, 115, 22, 0.28),
+      0 0 34px rgba(239, 68, 68, 0.18),
+      0 24px 70px rgba(2, 6, 16, 0.48);
+  }
+}
+
+.hot-products-card {
+  animation: hotProductsBorderPulse 1.9s ease-in-out infinite;
+}
