@@ -115,17 +115,16 @@ export default async function HomePage() {
 
           {featured.length > 0 ? (
             <div className="pointer-events-none absolute inset-x-6 bottom-6 z-10 hidden xl:flex xl:justify-end">
-              <div className="pointer-events-auto w-full max-w-[430px] rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(7,10,18,0.72),rgba(7,10,18,0.9))] p-4 shadow-[0_28px_80px_rgba(2,6,16,0.52)] backdrop-blur-xl">
+              <div className="hot-products-card pointer-events-auto w-full max-w-[430px] rounded-[28px] border border-red-300/45 bg-[linear-gradient(180deg,rgba(20,9,8,0.78),rgba(7,10,18,0.96))] p-4 backdrop-blur-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-200/80">
-                      Featured Right Now
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-100 drop-shadow-[0_0_10px_rgba(251,146,60,0.42)]">
+                      HOT PRODCUTS!
                     </p>
-                    <p className="mt-1 text-sm text-gray-300">Quick access to your top highlighted products.</p>
                   </div>
                   <Link
                     href="#featured-right-now"
-                    className="rounded-full border border-white/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/80 transition hover:border-white/30 hover:text-white"
+                    className="rounded-full border border-red-200/35 bg-black/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-50 transition hover:border-orange-200/60 hover:text-white"
                   >
                     View All
                   </Link>
