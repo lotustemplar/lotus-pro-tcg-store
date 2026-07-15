@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Carousel } from "@/components/Carousel";
 import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
 import {
+  MobileHeroFeaturedWidget,
   RotatingFeaturedShelf,
   RotatingHeroFeaturedList,
 } from "@/components/RotatingFeaturedProducts";
@@ -135,6 +136,12 @@ export default async function HomePage() {
             </div>
           ) : null}
         </div>
+
+        {featured.length > 0 ? (
+          <div className="relative z-10 -mt-14 px-3 pb-3 sm:hidden">
+            <MobileHeroFeaturedWidget products={featured} />
+          </div>
+        ) : null}
       </section>
 
       <section className="relative left-1/2 w-screen -translate-x-1/2 border-b border-white/8 bg-[#0a0e17]">

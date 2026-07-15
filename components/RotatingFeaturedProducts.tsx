@@ -16,18 +16,19 @@ type FeaturedProduct = {
   images: { url: string }[];
 };
 
-const BATCH_SIZE = 3;
+const DESKTOP_BATCH_SIZE = 3;
+const MOBILE_BATCH_SIZE = 1;
 const ROTATE_MS = 5000;
 const TRANSITION_MS = 420;
 
-function getBatchCount(length: number) {
-  if (length <= BATCH_SIZE) return 1;
-  return Math.ceil(length / BATCH_SIZE);
+function getBatchCount(length: number, batchSize: number) {
+  if (length <= batchSize) return 1;
+  return Math.ceil(length / batchSize);
 }
 
-function getBatchProducts(products: FeaturedProduct[], batchIndex: number) {
-  const start = batchIndex * BATCH_SIZE;
-  return products.slice(start, start + BATCH_SIZE);
+function getBatchProducts(products: FeaturedProduct[], batchIndex: number, batchSize: number) {
+  const start = batchIndex * batchSize;
+  return products.slice(start, start + batchSize);
 }
 
 function ArrowButton({
@@ -79,8 +80,8 @@ function BatchIndicators({
   );
 }
 
-function useFeaturedRotation(products: FeaturedProduct[]) {
-  const batchCount = useMemo(() => getBatchCount(products.length), [products.length]);
+function useFeaturedRotation(products: FeaturedProduct[], batchSize: number) {
+  const batchCount = useMemo(() => getBatchCount(products.length, batchSize), [batchSize, products.length]);
   const [batchIndex, setBatchIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const autoTimerRef = useRef<number | null>(null);
@@ -159,7 +160,7 @@ function useFeaturedRotation(products: FeaturedProduct[]) {
   return {
     batchCount,
     batchIndex,
-    currentProducts: getBatchProducts(products, batchIndex),
+    currentProducts: getBatchProducts(products, batchIndex, batchSize),
     isTransitioning,
     goNext,
     goPrevious,
@@ -169,7 +170,7 @@ function useFeaturedRotation(products: FeaturedProduct[]) {
 
 export function RotatingHeroFeaturedList({ products }: { products: FeaturedProduct[] }) {
   const { batchCount, batchIndex, currentProducts, isTransitioning, goNext, goPrevious, goToIndex } =
-    useFeaturedRotation(products);
+    useFeaturedRotation(products, DESKTOP_BATCH_SIZE);
 
   return (
     <div className="space-y-3">
@@ -191,9 +192,62 @@ export function RotatingHeroFeaturedList({ products }: { products: FeaturedProdu
   );
 }
 
+export function MobileHeroFeaturedWidget({ products }: { products: FeaturedProduct[] }) {
+  const { batchCount, batchIndex, currentProducts, isTransitioning, goNext, goPrevious, goToIndex } =
+    useFeaturedRotation(products, MOBILE_BATCH_SIZE);
+  const activeProduct = currentProducts[0];
+
+  if (!activeProduct) return null;
+
+  return (
+    <div className="space-y-3 rounded-[26px] border border-white/12 bg-[linear-gradient(180deg,rgba(7,10,18,0.74),rgba(7,10,18,0.94))] p-3 shadow-[0_24px_70px_rgba(2,6,16,0.48)] backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-200/80">
+            Featured Right Now
+          </p>
+          <p className="mt-1 text-xs text-gray-300">Rotating live picks from your featured lineup.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {batchCount > 1 ? (
+            <>
+              <button
+                type="button"
+                aria-label="Show previous featured product"
+                onClick={goPrevious}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-base font-semibold text-white transition hover:border-brand-400/60 hover:bg-brand-500/14"
+              >
+                {"<"}
+              </button>
+              <button
+                type="button"
+                aria-label="Show next featured product"
+                onClick={goNext}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-base font-semibold text-white transition hover:border-brand-400/60 hover:bg-brand-500/14"
+              >
+                {">"}
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div
+        className={`transition-all duration-[420ms] ease-out ${
+          isTransitioning ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+        }`}
+      >
+        <HeroFeaturedProductCard key={`${activeProduct.id}-${batchIndex}`} product={activeProduct} />
+      </div>
+
+      <BatchIndicators count={batchCount} activeIndex={batchIndex} onSelect={goToIndex} />
+    </div>
+  );
+}
+
 export function RotatingFeaturedShelf({ products }: { products: FeaturedProduct[] }) {
   const { batchCount, batchIndex, currentProducts, isTransitioning, goNext, goPrevious, goToIndex } =
-    useFeaturedRotation(products);
+    useFeaturedRotation(products, DESKTOP_BATCH_SIZE);
 
   return (
     <div className="space-y-4">
