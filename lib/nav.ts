@@ -1,4 +1,6 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
+import { STORE_CACHE_TAGS, STORE_CONFIG_REVALIDATE_SECONDS } from "./storefront-cache";
 
 export type NavCategory = {
   name: string;
@@ -14,12 +16,22 @@ type TopCategoryRow = {
   children: { name: string; slug: string }[];
 };
 
+const getCachedTopCategories = unstable_cache(
+  async (): Promise<TopCategoryRow[]> =>
+    prisma.category.findMany({
+      where: { parentId: null },
+      include: { children: { orderBy: { sortOrder: "asc" } } },
+      orderBy: { sortOrder: "asc" },
+    }),
+  ["nav-top-categories"],
+  {
+    revalidate: STORE_CONFIG_REVALIDATE_SECONDS,
+    tags: [STORE_CACHE_TAGS.categories],
+  },
+);
+
 export async function getNavCategories(): Promise<NavCategory[]> {
-  const tops: TopCategoryRow[] = await prisma.category.findMany({
-    where: { parentId: null },
-    include: { children: { orderBy: { sortOrder: "asc" } } },
-    orderBy: { sortOrder: "asc" },
-  });
+  const tops = await getCachedTopCategories();
 
   return tops.map((t: TopCategoryRow) => ({
     name: t.name,

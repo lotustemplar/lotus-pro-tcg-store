@@ -1,4 +1,6 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
+import { STORE_CACHE_TAGS, STORE_CONFIG_REVALIDATE_SECONDS } from "./storefront-cache";
 
 export const SITE_SETTINGS_ID = "site";
 const LEGACY_BRAND_NAME = "Lotus Pro Decks";
@@ -317,10 +319,20 @@ export function serializeSiteSettingsForDb(settings: SiteSettings) {
   };
 }
 
+const getCachedSiteSettingsRecord = unstable_cache(
+  async () =>
+    prisma.siteSettings.findUnique({
+      where: { id: SITE_SETTINGS_ID },
+    }),
+  ["site-settings-record"],
+  {
+    revalidate: STORE_CONFIG_REVALIDATE_SECONDS,
+    tags: [STORE_CACHE_TAGS.siteSettings],
+  },
+);
+
 export async function getSiteSettings(): Promise<SiteSettings> {
-  const settings = await prisma.siteSettings.findUnique({
-    where: { id: SITE_SETTINGS_ID },
-  });
+  const settings = await getCachedSiteSettingsRecord();
 
   return mergeSiteSettings(settings);
 }

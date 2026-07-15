@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
+import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
@@ -150,6 +151,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         },
       }),
     ]);
+    revalidateCatalogCache();
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -231,6 +233,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       categoryId: true,
     },
   });
+  revalidateCatalogCache();
 
   return NextResponse.json({ ok: true, product: toAdminProductPayload(updated) });
 }
@@ -240,5 +243,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   await prisma.product.delete({ where: { id: params.id } });
+  revalidateCatalogCache();
   return NextResponse.json({ ok: true });
 }

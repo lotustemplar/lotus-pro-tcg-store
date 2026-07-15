@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { prisma } from "@/lib/prisma";
 import { formatCents } from "@/lib/format";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { StockBadge } from "@/components/StockBadge";
@@ -8,23 +7,14 @@ import { RestockNotifyForm } from "@/components/RestockNotifyForm";
 import type { Metadata } from "next";
 import { buildSocialMetadata } from "@/lib/metadata";
 import { getSiteSettings } from "@/lib/site-settings";
+import { getProductBySlug } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
 type ProductImage = { id: string; url: string; altText: string };
 
-async function getProduct(slug: string) {
-  return prisma.product.findUnique({
-    where: { slug },
-    include: {
-      images: { orderBy: { sortOrder: "asc" } },
-      category: { include: { parent: true } },
-    },
-  });
-}
-
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const [product, settings] = await Promise.all([getProduct(params.slug), getSiteSettings()]);
+  const [product, settings] = await Promise.all([getProductBySlug(params.slug), getSiteSettings()]);
   if (!product) return {};
   const title = product.seoTitle || product.name;
   const description = product.seoDescription || product.description.slice(0, 155);
@@ -44,7 +34,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
-  const product = await getProduct(params.slug);
+  const product = await getProductBySlug(params.slug);
   if (!product || !product.isActive) return notFound();
 
   const mainImage = product.images[0]?.url ?? null;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { z } from "zod";
 
 const productIdsSchema = z.array(z.string().min(1)).min(1);
@@ -85,6 +86,8 @@ export async function POST(req: NextRequest) {
       break;
     }
   }
+
+  revalidateCatalogCache();
 
   return NextResponse.json({ ok: true, count });
 }

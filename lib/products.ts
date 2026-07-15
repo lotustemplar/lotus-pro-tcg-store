@@ -1,5 +1,12 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
 import { getDisplayProductName } from "./product-display";
+import {
+  STORE_CACHE_TAGS,
+  STORE_CATALOG_REVALIDATE_SECONDS,
+  STORE_CONFIG_REVALIDATE_SECONDS,
+  STORE_SEARCH_REVALIDATE_SECONDS,
+} from "./storefront-cache";
 
 export const CATEGORY_SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
@@ -48,16 +55,39 @@ export type LeafCategory = {
 };
 
 export async function getTopCategory(topSlug: string): Promise<CategoryWithChildren | null> {
-  return prisma.category.findFirst({
-    where: { slug: topSlug, parentId: null },
-    include: { children: { orderBy: { sortOrder: "asc" } } },
-  });
+  return unstable_cache(
+    async () =>
+      prisma.category.findFirst({
+        where: { slug: topSlug, parentId: null },
+        include: { children: { orderBy: { sortOrder: "asc" } } },
+      }),
+    ["top-category", topSlug],
+    {
+      revalidate: STORE_CONFIG_REVALIDATE_SECONDS,
+      tags: [STORE_CACHE_TAGS.categories],
+    },
+  )();
 }
 
 export async function getSubCategory(topSlug: string, subSlug: string): Promise<LeafCategory | null> {
-  const top = await prisma.category.findFirst({ where: { slug: topSlug, parentId: null } });
+  const top = await unstable_cache(
+    async () => prisma.category.findFirst({ where: { slug: topSlug, parentId: null } }),
+    ["sub-category-parent", topSlug],
+    {
+      revalidate: STORE_CONFIG_REVALIDATE_SECONDS,
+      tags: [STORE_CACHE_TAGS.categories],
+    },
+  )();
   if (!top) return null;
-  return prisma.category.findFirst({ where: { slug: subSlug, parentId: top.id } });
+
+  return unstable_cache(
+    async () => prisma.category.findFirst({ where: { slug: subSlug, parentId: top.id } }),
+    ["sub-category", topSlug, subSlug],
+    {
+      revalidate: STORE_CONFIG_REVALIDATE_SECONDS,
+      tags: [STORE_CACHE_TAGS.categories],
+    },
+  )();
 }
 
 function getCategorySortOrder(sort: CategorySortOption | undefined) {
@@ -79,15 +109,27 @@ export async function getProductsForCategoryIds(
   categoryIds: string[],
   filters: CategoryProductFilters = {},
 ): Promise<ProductCardData[]> {
-  return prisma.product.findMany({
-    where: {
-      categoryId: { in: categoryIds },
-      isActive: true,
-      ...(filters.hideOutOfStock ? { quantity: { gt: 0 } } : {}),
+  const stableCategoryIds = [...categoryIds].sort();
+  const sortKey = filters.sort ?? "newest";
+  const stockKey = filters.hideOutOfStock ? "in-stock-only" : "all-stock";
+
+  return unstable_cache(
+    async () =>
+      prisma.product.findMany({
+        where: {
+          categoryId: { in: stableCategoryIds },
+          isActive: true,
+          ...(filters.hideOutOfStock ? { quantity: { gt: 0 } } : {}),
+        },
+        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+        orderBy: getCategorySortOrder(filters.sort),
+      }),
+    ["products-for-categories", stableCategoryIds.join(","), sortKey, stockKey],
+    {
+      revalidate: STORE_CATALOG_REVALIDATE_SECONDS,
+      tags: [STORE_CACHE_TAGS.categories, STORE_CACHE_TAGS.products],
     },
-    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-    orderBy: getCategorySortOrder(filters.sort),
-  });
+  )();
 }
 
 export function toCardProps(p: ProductCardData) {
@@ -104,42 +146,55 @@ export function toCardProps(p: ProductCardData) {
 }
 
 export async function getFeaturedProducts(): Promise<ProductCardData[]> {
-  return prisma.product.findMany({
-    where: { featuredOnHome: true, isActive: true, quantity: { gt: 0 } },
-    orderBy: { featuredOrder: "asc" },
-    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-  });
+  return unstable_cache(
+    async () =>
+      prisma.product.findMany({
+        where: { featuredOnHome: true, isActive: true, quantity: { gt: 0 } },
+        orderBy: { featuredOrder: "asc" },
+        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      }),
+    ["featured-products"],
+    {
+      revalidate: STORE_CATALOG_REVALIDATE_SECONDS,
+      tags: [STORE_CACHE_TAGS.products],
+    },
+  )();
 }
 
-export async function searchProducts(q: string): Promise<ProductCardData[]> {
-  if (q.trim().length < 2) return [];
-  return prisma.product.findMany({
-    where: {
-      isActive: true,
-      OR: [
-        { name: { contains: q } },
-        { sku: { contains: q } },
-        { description: { contains: q } },
-      ],
+export async function searchProducts(q: string, limit = 24): Promise<ProductCardData[]> {
+  const normalizedQuery = q.trim();
+  if (normalizedQuery.length < 2) return [];
+
+  return unstable_cache(
+    async () =>
+      prisma.product.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { name: { contains: normalizedQuery, mode: "insensitive" } },
+            { sku: { contains: normalizedQuery, mode: "insensitive" } },
+            { description: { contains: normalizedQuery, mode: "insensitive" } },
+          ],
+        },
+        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+        orderBy: [{ featuredOnHome: "desc" }, { createdAt: "desc" }],
+        take: limit,
+      }),
+    ["search-products", normalizedQuery.toLowerCase(), String(limit)],
+    {
+      revalidate: STORE_SEARCH_REVALIDATE_SECONDS,
+      tags: [STORE_CACHE_TAGS.products],
     },
-    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-  });
+  )();
 }
 
 export async function getHomeCategoryPreviews(limit = 5): Promise<HomeCategoryPreview[]> {
-  const categories = await prisma.category.findMany({
-    where: { parentId: null },
-    orderBy: { sortOrder: "asc" },
-    take: limit,
-    include: {
-      products: {
-        where: { isActive: true },
-        orderBy: [{ featuredOnHome: "desc" }, { createdAt: "desc" }],
-        take: 1,
-        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-      },
-      children: {
+  const categories = await unstable_cache(
+    async () =>
+      prisma.category.findMany({
+        where: { parentId: null },
         orderBy: { sortOrder: "asc" },
+        take: limit,
         include: {
           products: {
             where: { isActive: true },
@@ -147,10 +202,25 @@ export async function getHomeCategoryPreviews(limit = 5): Promise<HomeCategoryPr
             take: 1,
             include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
           },
+          children: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              products: {
+                where: { isActive: true },
+                orderBy: [{ featuredOnHome: "desc" }, { createdAt: "desc" }],
+                take: 1,
+                include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+              },
+            },
+          },
         },
-      },
+      }),
+    ["home-category-previews", String(limit)],
+    {
+      revalidate: STORE_CATALOG_REVALIDATE_SECONDS,
+      tags: [STORE_CACHE_TAGS.categories, STORE_CACHE_TAGS.products],
     },
-  });
+  )();
 
   return categories.map((category) => {
     const directImage = category.products[0]?.images[0]?.url ?? null;
@@ -166,4 +236,22 @@ export async function getHomeCategoryPreviews(limit = 5): Promise<HomeCategoryPr
       productCount,
     };
   });
+}
+
+export async function getProductBySlug(slug: string) {
+  return unstable_cache(
+    async () =>
+      prisma.product.findUnique({
+        where: { slug },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          category: { include: { parent: true } },
+        },
+      }),
+    ["product-by-slug", slug],
+    {
+      revalidate: STORE_CATALOG_REVALIDATE_SECONDS,
+      tags: [STORE_CACHE_TAGS.products],
+    },
+  )();
 }

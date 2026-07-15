@@ -3,10 +3,10 @@ import { searchProducts } from "@/lib/products";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
-  const products = await searchProducts(q);
+  const products = await searchProducts(q, 8);
 
   return NextResponse.json({
-    results: products.slice(0, 8).map((p) => ({
+    results: products.map((p) => ({
       slug: p.slug,
       name: p.name,
       priceCents: p.priceCents,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import Stripe from "stripe";
 
 type OrderItemRow = { productId: string; quantity: number };
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
             })
           ),
         ]);
+        revalidateCatalogCache();
       }
     }
   }

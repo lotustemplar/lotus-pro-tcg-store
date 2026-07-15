@@ -9,6 +9,7 @@ import {
   mergeSiteSettings,
   serializeSiteSettingsForDb,
 } from "@/lib/site-settings";
+import { revalidateSiteSettingsCache } from "@/lib/storefront-cache";
 
 const heroSlideSchema = z.object({
   id: z.string().min(1),
@@ -108,6 +109,7 @@ export async function PUT(req: NextRequest) {
   revalidatePath("/", "layout");
   revalidatePath("/");
   revalidatePath("/admin/settings");
+  revalidateSiteSettingsCache();
 
   return NextResponse.json({
     ok: true,

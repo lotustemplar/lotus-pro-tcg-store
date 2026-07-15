@@ -45,7 +45,7 @@ export function SearchBar() {
       } finally {
         setLoading(false);
       }
-    }, 180);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [query]);

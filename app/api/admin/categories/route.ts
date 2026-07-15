@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { z } from "zod";
 
 const schema = z.object({
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
       isTopLevel: !parsed.data.parentId,
     },
   });
+  revalidateCatalogCache();
 
   return NextResponse.json({ ok: true, id: category.id });
 }
