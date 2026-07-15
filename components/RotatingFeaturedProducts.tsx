@@ -206,7 +206,6 @@ export function MobileHeroFeaturedWidget({ products }: { products: FeaturedProdu
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-200/80">
             Featured Right Now
           </p>
-          <p className="mt-1 text-xs text-gray-300">Rotating live picks from your featured lineup.</p>
         </div>
         <div className="flex items-center gap-2">
           {batchCount > 1 ? (
