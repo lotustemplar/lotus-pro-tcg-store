@@ -23,6 +23,12 @@ export default async function AdminProductsPage() {
 
   const products = await prisma.product.findMany({
     orderBy: { name: "asc" },
+    include: {
+      images: {
+        orderBy: { sortOrder: "asc" },
+        take: 1,
+      },
+    },
   });
 
   return (
@@ -45,6 +51,7 @@ export default async function AdminProductsPage() {
           sourceSetName: product.sourceSetName,
           sourceProductType: product.sourceProductType,
           sourcePriceCents: product.sourcePriceCents,
+          imageUrl: product.images[0]?.url ?? product.sourceImageUrl ?? null,
           autoUpdatePrice: product.autoUpdatePrice,
           lastSyncedAt: product.lastSyncedAt?.toISOString() ?? null,
           lastSyncError: product.lastSyncError,

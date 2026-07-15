@@ -21,6 +21,7 @@ type AdminProduct = {
   id: string;
   name: string;
   priceCents: number;
+  imageUrl: string | null;
   sourceMarketplace: string | null;
   sourceSetName: string | null;
   sourceProductType: string | null;
@@ -640,6 +641,7 @@ export function ProductsManager({
               <table className="w-full min-w-[1760px] text-left text-sm">
                 <thead className="bg-bg/70 text-gray-400">
                   <tr>
+                    <th className="px-4 py-3">Preview</th>
                     <th className="px-4 py-3"></th>
                     <th className="px-4 py-3">IP</th>
                     <th className="px-4 py-3">Set</th>
@@ -663,6 +665,21 @@ export function ProductsManager({
 
                     return (
                       <tr key={product.id} className="border-t border-border bg-bg-panel/40 align-top">
+                        <td className="px-4 py-3">
+                          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-bg shadow-[0_10px_24px_rgba(2,6,16,0.24)]">
+                            {product.imageUrl ? (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="px-2 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+                                No Image
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           <input
                             type="checkbox"
