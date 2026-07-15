@@ -12,6 +12,8 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -25,7 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify DATABASE_URL secret
+        run: |
+          node -e "if (!process.env.DATABASE_URL || !process.env.DATABASE_URL.trim()) { console.error('GitHub Actions secret DATABASE_URL is missing or empty. Update it in Settings > Secrets and variables > Actions.'); process.exit(1); }"
+
       - name: Run scheduled sync
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run sync:tcgplayer
