@@ -42,7 +42,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Header categories={categories} settings={settings} />
           <main className="mx-auto min-h-[60vh] max-w-[1500px] px-4 py-8">{children}</main>
           <Footer categories={categories} settings={settings} />
-          <StickyPromoBar />
+          <StickyPromoBar
+            shippingPrimary={settings.footerShippingLinePrimary}
+            shippingHighlight={settings.footerShippingLineHighlight}
+          />
           <CartDrawer />
           <TawkToWidget />
         </CartProvider>

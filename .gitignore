@@ -8,3 +8,5 @@ lotus-pro-decks-store-deploy.zip
 
 # Local Netlify folder
 .netlify
+
+.vercel

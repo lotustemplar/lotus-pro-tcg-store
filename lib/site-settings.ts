@@ -324,7 +324,7 @@ const getCachedSiteSettingsRecord = unstable_cache(
     prisma.siteSettings.findUnique({
       where: { id: SITE_SETTINGS_ID },
     }),
-  ["site-settings-record"],
+  ["site-settings-record-v2"],
   {
     revalidate: STORE_CONFIG_REVALIDATE_SECONDS,
     tags: [STORE_CACHE_TAGS.siteSettings],
