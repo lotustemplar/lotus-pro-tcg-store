@@ -1,3 +1,12 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
 export default function CancelPage() {
   return (
     <div className="mx-auto max-w-lg py-20 text-center">
