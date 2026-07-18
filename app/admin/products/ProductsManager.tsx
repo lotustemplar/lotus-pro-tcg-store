@@ -693,8 +693,10 @@ export function ProductsManager({
               <table className="w-full min-w-[1440px] table-fixed text-left text-sm">
                 <thead className="bg-bg/70 text-gray-400">
                   <tr>
-                    <th className="px-4 py-3">Preview</th>
-                    <th className="px-4 py-3">Select</th>
+                    <th className="w-12 px-2 py-3 text-center">
+                      <span className="sr-only">Select</span>
+                    </th>
+                    <th className="w-24 px-3 py-3">Preview</th>
                     <th className="px-4 py-3">Set</th>
                     <th className="px-4 py-3">Product</th>
                     <th className="px-4 py-3">Category</th>
@@ -714,7 +716,16 @@ export function ProductsManager({
 
                     return (
                       <tr key={product.id} className="border-t border-border bg-bg-panel/40 align-top">
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIdSet.has(product.id)}
+                            onChange={(event) => toggleSelected(product.id, event.target.checked)}
+                            className="h-4 w-4"
+                            aria-label={`Select ${product.name}`}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
                           <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-bg shadow-[0_10px_24px_rgba(2,6,16,0.24)]">
                             {product.imageUrl ? (
                               <img
@@ -728,14 +739,6 @@ export function ProductsManager({
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedIdSet.has(product.id)}
-                            onChange={(event) => toggleSelected(product.id, event.target.checked)}
-                            className="h-4 w-4"
-                          />
                         </td>
                         <td className="px-4 py-3">
                           <div className="min-w-[220px] max-w-[240px] space-y-1.5">
