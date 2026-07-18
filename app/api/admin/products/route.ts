@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
+import { getCategoryUrl, getHomepageUrl, getProductUrl, submitIndexNowUrls } from "@/lib/indexnow";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
@@ -95,8 +96,27 @@ export async function POST(req: NextRequest) {
         ...data,
         images: { create: images.map((img, idx) => ({ ...img, sortOrder: idx })) },
       },
+      select: {
+        id: true,
+        slug: true,
+        category: {
+          select: {
+            slug: true,
+            parent: {
+              select: {
+                slug: true,
+              },
+            },
+          },
+        },
+      },
     });
     revalidateCatalogCache();
+    await submitIndexNowUrls([
+      getHomepageUrl(),
+      getProductUrl(product.slug),
+      getCategoryUrl(product.category),
+    ]);
 
     return NextResponse.json({ ok: true, id: product.id });
   } catch (error) {

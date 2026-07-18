@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
+import { getCategoryUrl, getHomepageUrl, getProductUrl, submitIndexNowUrls } from "@/lib/indexnow";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
@@ -132,6 +133,26 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const normalized = normalizeProductInput(parsed.data);
   const { images, ...data } = normalized;
+  const previous = await prisma.product.findUnique({
+    where: { id: params.id },
+    select: {
+      slug: true,
+      category: {
+        select: {
+          slug: true,
+          parent: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!previous) {
+    return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  }
 
   const dupe = await prisma.product.findFirst({
     where: { slug: data.slug, NOT: { id: params.id } },
@@ -141,7 +162,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   try {
-    await prisma.$transaction([
+    const [, updatedProduct] = await prisma.$transaction([
       prisma.productImage.deleteMany({ where: { productId: params.id } }),
       prisma.product.update({
         where: { id: params.id },
@@ -149,9 +170,29 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           ...data,
           images: { create: images.map((img, idx) => ({ ...img, sortOrder: idx })) },
         },
+        select: {
+          slug: true,
+          category: {
+            select: {
+              slug: true,
+              parent: {
+                select: {
+                  slug: true,
+                },
+              },
+            },
+          },
+        },
       }),
     ]);
     revalidateCatalogCache();
+    await submitIndexNowUrls([
+      getHomepageUrl(),
+      getProductUrl(previous.slug),
+      getProductUrl(updatedProduct.slug),
+      getCategoryUrl(previous.category),
+      getCategoryUrl(updatedProduct.category),
+    ]);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -181,10 +222,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const existing = await prisma.product.findUnique({
     where: { id: params.id },
     select: {
+      slug: true,
       autoUpdatePrice: true,
       priceCents: true,
       sourceMarketplace: true,
       sourcePriceCents: true,
+      category: {
+        select: {
+          slug: true,
+          parent: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -219,6 +271,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     select: {
       id: true,
       name: true,
+      slug: true,
       priceCents: true,
       sourceMarketplace: true,
       sourceSetName: true,
@@ -231,9 +284,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       featuredOnHome: true,
       isActive: true,
       categoryId: true,
+      category: {
+        select: {
+          slug: true,
+          parent: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
     },
   });
   revalidateCatalogCache();
+  await submitIndexNowUrls([
+    getHomepageUrl(),
+    getProductUrl(existing.slug),
+    getProductUrl(updated.slug),
+    getCategoryUrl(existing.category),
+    getCategoryUrl(updated.category),
+  ]);
 
   return NextResponse.json({ ok: true, product: toAdminProductPayload(updated) });
 }
@@ -242,7 +312,30 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const existing = await prisma.product.findUnique({
+    where: { id: params.id },
+    select: {
+      slug: true,
+      category: {
+        select: {
+          slug: true,
+          parent: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!existing) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+
   await prisma.product.delete({ where: { id: params.id } });
   revalidateCatalogCache();
+  await submitIndexNowUrls([
+    getHomepageUrl(),
+    getProductUrl(existing.slug),
+    getCategoryUrl(existing.category),
+  ]);
   return NextResponse.json({ ok: true });
 }

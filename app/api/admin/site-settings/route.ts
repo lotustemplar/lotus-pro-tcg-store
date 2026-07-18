@@ -10,6 +10,7 @@ import {
   serializeSiteSettingsForDb,
 } from "@/lib/site-settings";
 import { revalidateSiteSettingsCache } from "@/lib/storefront-cache";
+import { submitFullSiteToIndexNow } from "@/lib/indexnow";
 
 const heroSlideSchema = z.object({
   id: z.string().min(1),
@@ -110,6 +111,7 @@ export async function PUT(req: NextRequest) {
   revalidatePath("/");
   revalidatePath("/admin/settings");
   revalidateSiteSettingsCache();
+  await submitFullSiteToIndexNow();
 
   return NextResponse.json({
     ok: true,
