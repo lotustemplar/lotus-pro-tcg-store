@@ -88,6 +88,9 @@ export function ProductsManager({
   const [message, setMessage] = useState<Message | null>(null);
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [groupCategoryFilters, setGroupCategoryFilters] = useState<Record<string, string>>(() =>
+    Object.fromEntries(topLevels.map((topLevel) => [topLevel.id, "all"])),
+  );
   const [bulkCategory, setBulkCategory] = useState<BulkCategoryState>(() => {
     const firstTopLevel = topLevels[0];
     const firstCategory = firstTopLevel
@@ -113,15 +116,26 @@ export function ProductsManager({
   const savingIdSet = new Set(savingIds);
   const selectedIdSet = new Set(selectedIds);
 
-  const groupedProducts = topLevels.map((topLevel) => ({
-    topLevel,
-    items: products
+  const groupedProducts = topLevels.map((topLevel) => {
+    const allItems = products
       .filter((product) => {
         const category = leafCategories.find((entry) => entry.id === product.categoryId);
         return category?.topLevelId === topLevel.id;
       })
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  }));
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const categoryFilter = groupCategoryFilters[topLevel.id] ?? "all";
+    const items =
+      categoryFilter === "all"
+        ? allItems
+        : allItems.filter((product) => product.categoryId === categoryFilter);
+
+    return {
+      topLevel,
+      allItems,
+      items,
+      categoryFilter,
+    };
+  });
 
   function setProductField<K extends keyof AdminProduct>(id: string, key: K, value: AdminProduct[K]) {
     setProducts((current) =>
@@ -607,10 +621,11 @@ export function ProductsManager({
         </div>
       </div>
 
-      {groupedProducts.map(({ topLevel, items }) => {
+      {groupedProducts.map(({ topLevel, allItems, items, categoryFilter }) => {
         const groupIds = items.map((product) => product.id);
         const selectedInGroup = groupIds.filter((id) => selectedIdSet.has(id)).length;
         const allInGroupSelected = items.length > 0 && selectedInGroup === items.length;
+        const groupCategoryOptions = categoriesForTopLevel(topLevel.id);
 
         return (
           <details
@@ -622,43 +637,77 @@ export function ProductsManager({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-display text-xl font-bold text-white">{topLevel.name}</p>
-                  <p className="text-sm text-gray-400">{items.length} product(s)</p>
+                  <p className="text-sm text-gray-400">
+                    {items.length}
+                    {items.length !== allItems.length ? ` of ${allItems.length}` : ""} product(s)
+                  </p>
                 </div>
-                <label className="flex items-center gap-2 text-sm text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={allInGroupSelected}
-                    onChange={(event) => toggleSelectedGroup(groupIds, event.target.checked)}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div
+                    className="flex items-center gap-2"
                     onClick={(event) => event.stopPropagation()}
-                    className="h-4 w-4"
-                  />
-                  Select IP group
-                </label>
+                  >
+                    <label
+                      htmlFor={`group-filter-${topLevel.id}`}
+                      className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400"
+                    >
+                      Category View
+                    </label>
+                    <select
+                      id={`group-filter-${topLevel.id}`}
+                      value={categoryFilter}
+                      onChange={(event) =>
+                        setGroupCategoryFilters((current) => ({
+                          ...current,
+                          [topLevel.id]: event.target.value,
+                        }))
+                      }
+                      className="min-w-[190px] rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                    >
+                      <option value="all">All products</option>
+                      {groupCategoryOptions.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <label
+                    className="flex items-center gap-2 text-sm text-gray-300"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={allInGroupSelected}
+                      onChange={(event) => toggleSelectedGroup(groupIds, event.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    Select visible
+                  </label>
+                </div>
               </div>
             </summary>
 
             <div className="admin-scrollbar max-w-full overflow-x-scroll overscroll-x-contain border-t border-border pb-4 [scrollbar-gutter:stable]">
-              <table className="w-full min-w-[1760px] text-left text-sm">
+              <table className="w-full min-w-[1440px] table-fixed text-left text-sm">
                 <thead className="bg-bg/70 text-gray-400">
                   <tr>
                     <th className="px-4 py-3">Preview</th>
-                    <th className="px-4 py-3"></th>
-                    <th className="px-4 py-3">IP</th>
+                    <th className="px-4 py-3">Select</th>
                     <th className="px-4 py-3">Set</th>
-                    <th className="px-4 py-3">Name of Product</th>
+                    <th className="px-4 py-3">Product</th>
                     <th className="px-4 py-3">Category</th>
                     <th className="px-4 py-3">Price</th>
                     <th className="px-4 py-3">Quantity</th>
                     <th className="px-4 py-3">Auto Price</th>
-                    <th className="px-4 py-3">Home</th>
-                    <th className="px-4 py-3">Active</th>
+                    <th className="px-4 py-3">Visibility</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((product) => {
                     const currentTopLevelId = topLevelForProduct(product);
-                    const categoryOptions = categoriesForTopLevel(currentTopLevelId);
                     const dirty = dirtyIdSet.has(product.id);
                     const saving = savingIdSet.has(product.id);
                     const isTracked = product.sourceMarketplace === "tcgplayer";
@@ -666,7 +715,7 @@ export function ProductsManager({
                     return (
                       <tr key={product.id} className="border-t border-border bg-bg-panel/40 align-top">
                         <td className="px-4 py-3">
-                          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-bg shadow-[0_10px_24px_rgba(2,6,16,0.24)]">
+                          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-bg shadow-[0_10px_24px_rgba(2,6,16,0.24)]">
                             {product.imageUrl ? (
                               <img
                                 src={product.imageUrl}
@@ -688,33 +737,14 @@ export function ProductsManager({
                             className="h-4 w-4"
                           />
                         </td>
-                        <td className="px-4 py-3 text-gray-300">
-                          <select
-                            value={currentTopLevelId}
-                            onChange={(event) => {
-                              const nextTopLevelId = event.target.value;
-                              const firstCategory = categoriesForTopLevel(nextTopLevelId)[0];
-                              if (firstCategory) {
-                                setProductField(product.id, "categoryId", firstCategory.id);
-                              }
-                            }}
-                            className="w-44 rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
-                          >
-                            {topLevels.map((entry) => (
-                              <option key={entry.id} value={entry.id}>
-                                {entry.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
                         <td className="px-4 py-3">
-                          <div className="min-w-[280px] max-w-[320px] space-y-2">
-                            <p className="text-sm font-medium leading-6 text-white">
+                          <div className="min-w-[220px] max-w-[240px] space-y-1.5">
+                            <p className="text-sm font-medium leading-5 text-white">
                               {product.sourceSetName || "Manual / No set"}
                             </p>
-                            <div className="space-y-1 text-xs text-gray-500">
-                              <p>{isTracked ? "TCGplayer tracked" : "Manual product"}</p>
+                            <div className="space-y-0.5 text-xs text-gray-500">
                               <p>{product.sourceProductType || "Type unavailable"}</p>
+                              <p>{isTracked ? topLevel.name : "Manual product"}</p>
                             </div>
                           </div>
                         </td>
@@ -722,10 +752,10 @@ export function ProductsManager({
                           <input
                             value={product.name}
                             onChange={(event) => setProductField(product.id, "name", event.target.value)}
-                            className="w-full min-w-[340px] rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                            className="w-full min-w-[260px] rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                           />
-                          <div className="mt-2 space-y-1 text-xs text-gray-500">
-                            <p>Product title only. Set is shown in its own column.</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                            <p>{isTracked ? "TCGplayer tracked" : "Manual product"}</p>
                             <p>
                               <Link
                                 href={`/admin/products/${product.id}`}
@@ -740,13 +770,20 @@ export function ProductsManager({
                           <select
                             value={product.categoryId}
                             onChange={(event) => setProductField(product.id, "categoryId", event.target.value)}
-                            className="w-52 rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                            className="w-44 rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
                           >
-                            {categoryOptions.map((category) => (
-                              <option key={category.id} value={category.id}>
-                                {category.name}
-                              </option>
-                            ))}
+                            {topLevels.map((entry) => {
+                              const categoryOptions = categoriesForTopLevel(entry.id);
+                              return (
+                                <optgroup key={entry.id} label={entry.name}>
+                                  {categoryOptions.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                      {category.name}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              );
+                            })}
                           </select>
                         </td>
                         <td className="px-4 py-3">
@@ -756,7 +793,7 @@ export function ProductsManager({
                             value={visiblePriceValue(product)}
                             onChange={(event) => handlePriceDraftChange(product.id, event.target.value)}
                             onBlur={() => handlePriceDraftBlur(product)}
-                            className="w-28 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                            className="w-24 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                           />
                           <div className="mt-2 space-y-1 text-xs text-gray-500">
                             <p>Store: {formatCents(product.priceCents)}</p>
@@ -774,7 +811,7 @@ export function ProductsManager({
                             value={visibleQuantityValue(product)}
                             onChange={(event) => handleQuantityDraftChange(product.id, event.target.value)}
                             onBlur={() => handleQuantityDraftBlur(product)}
-                            className="w-24 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                            className="w-20 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -799,25 +836,31 @@ export function ProductsManager({
                           </p>
                         </td>
                         <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            checked={product.featuredOnHome}
-                            onChange={(event) =>
-                              setProductField(product.id, "featuredOnHome", event.target.checked)
-                            }
-                            className="h-4 w-4"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            checked={product.isActive}
-                            onChange={(event) => setProductField(product.id, "isActive", event.target.checked)}
-                            className="h-4 w-4"
-                          />
+                          <div className="min-w-[132px] space-y-2">
+                            <label className="flex items-center justify-between gap-2 rounded-md border border-white/10 bg-bg/60 px-2 py-1.5 text-xs text-gray-300">
+                              <span>Home</span>
+                              <input
+                                type="checkbox"
+                                checked={product.featuredOnHome}
+                                onChange={(event) =>
+                                  setProductField(product.id, "featuredOnHome", event.target.checked)
+                                }
+                                className="h-4 w-4"
+                              />
+                            </label>
+                            <label className="flex items-center justify-between gap-2 rounded-md border border-white/10 bg-bg/60 px-2 py-1.5 text-xs text-gray-300">
+                              <span>Active</span>
+                              <input
+                                type="checkbox"
+                                checked={product.isActive}
+                                onChange={(event) => setProductField(product.id, "isActive", event.target.checked)}
+                                className="h-4 w-4"
+                              />
+                            </label>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex flex-wrap justify-end gap-2">
                             <Link
                               href={`/admin/products/${product.id}`}
                               className="rounded-md border border-white/12 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:border-brand-400/50 hover:text-white"
@@ -841,7 +884,7 @@ export function ProductsManager({
                               Delete
                             </button>
                           </div>
-                          <div className="mt-2 space-y-1 text-xs text-gray-500">
+                          <div className="mt-2 space-y-1 text-right text-xs text-gray-500">
                             <p>{dirty ? "Unsaved changes" : categoryName(product.categoryId)}</p>
                             {product.lastSyncError && (
                               <p className={isSyncWarning(product.lastSyncError) ? "text-amber-300" : "text-red-300"}>
@@ -856,7 +899,13 @@ export function ProductsManager({
                 </tbody>
               </table>
 
-              {items.length === 0 && <p className="p-6 text-center text-gray-400">No products in this IP yet.</p>}
+              {items.length === 0 && (
+                <p className="p-6 text-center text-gray-400">
+                  {allItems.length === 0
+                    ? "No products in this IP yet."
+                    : "No products match the selected category filter."}
+                </p>
+              )}
             </div>
           </details>
         );
