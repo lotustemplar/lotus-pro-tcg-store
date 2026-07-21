@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { ProductCard } from "@/components/ProductCard";
 import { toCardProps, searchProducts } from "@/lib/products";
+import { STORE_SEARCH_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = STORE_SEARCH_REVALIDATE_SECONDS;
 export const metadata: Metadata = {
   robots: {
     index: false,

@@ -9,8 +9,9 @@ import { TawkToWidget } from "@/components/TawkToWidget";
 import { getNavCategories } from "@/lib/nav";
 import { getSiteSettings } from "@/lib/site-settings";
 import { buildSocialMetadata } from "@/lib/metadata";
+import { STORE_CONFIG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = STORE_CONFIG_REVALIDATE_SECONDS;
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();

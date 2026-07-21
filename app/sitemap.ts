@@ -1,13 +1,13 @@
 import type { MetadataRoute } from "next";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSiteUrl } from "@/lib/metadata";
+import { STORE_CACHE_TAGS, STORE_SITEMAP_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = STORE_SITEMAP_REVALIDATE_SECONDS;
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = getSiteUrl();
-
-  const [categories, products] = await Promise.all([
+const getCachedSitemapCategories = unstable_cache(
+  async () =>
     prisma.category.findMany({
       select: {
         slug: true,
@@ -21,6 +21,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
       orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }],
     }),
+  ["sitemap-categories"],
+  {
+    revalidate: STORE_SITEMAP_REVALIDATE_SECONDS,
+    tags: [STORE_CACHE_TAGS.categories],
+  },
+);
+
+const getCachedSitemapProducts = unstable_cache(
+  async () =>
     prisma.product.findMany({
       where: { isActive: true },
       select: {
@@ -29,7 +38,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
       orderBy: { updatedAt: "desc" },
     }),
-  ]);
+  ["sitemap-products"],
+  {
+    revalidate: STORE_SITEMAP_REVALIDATE_SECONDS,
+    tags: [STORE_CACHE_TAGS.products],
+  },
+);
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const siteUrl = getSiteUrl();
+
+  const [categories, products] = await Promise.all([getCachedSitemapCategories(), getCachedSitemapProducts()]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {

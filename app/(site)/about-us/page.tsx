@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { buildSocialMetadata } from "@/lib/metadata";
 import { getSiteSettings } from "@/lib/site-settings";
+import { STORE_CONFIG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = STORE_CONFIG_REVALIDATE_SECONDS;
 
 const COMMUNITY_POINTS = [
   {

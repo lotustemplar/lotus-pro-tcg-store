@@ -11,8 +11,9 @@ import {
 } from "@/lib/products";
 import { getSiteSettings } from "@/lib/site-settings";
 import { buildSocialMetadata } from "@/lib/metadata";
+import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = STORE_CATALOG_REVALIDATE_SECONDS;
 
 function normalizeSort(value: string | string[] | undefined): CategorySortOption {
   if (typeof value !== "string") return "newest";

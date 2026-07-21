@@ -12,8 +12,9 @@ import {
   toCardProps,
 } from "@/lib/products";
 import { getSiteSettings } from "@/lib/site-settings";
+import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = STORE_CATALOG_REVALIDATE_SECONDS;
 
 const FEATURE_STRIP = [
   {

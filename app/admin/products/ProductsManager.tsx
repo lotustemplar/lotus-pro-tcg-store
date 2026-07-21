@@ -487,7 +487,7 @@ export function ProductsManager({
               className="h-4 w-4"
             />
             <label htmlFor="select-all-products" className="text-sm text-gray-300">
-              Select all products
+              Select all visible products
             </label>
             <span className="text-sm text-gray-500">{selectedIds.length} selected</span>
           </div>

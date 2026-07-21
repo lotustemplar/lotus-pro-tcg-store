@@ -8,8 +8,9 @@ import type { Metadata } from "next";
 import { buildSocialMetadata } from "@/lib/metadata";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getProductBySlug } from "@/lib/products";
+import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = STORE_CATALOG_REVALIDATE_SECONDS;
 
 type ProductImage = { id: string; url: string; altText: string };
 
