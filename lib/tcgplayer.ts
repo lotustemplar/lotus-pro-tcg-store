@@ -146,16 +146,26 @@ function isSuspiciousOutlier({
   nextCandidate: TcgplayerTopListing | null;
   details: TcgplayerProductDetails;
 }) {
+  const MIN_OUTLIER_GAP = 25;
+  const RELATIVE_FLOOR = 0.9;
   const detailsFloor =
     positiveNumber(details.lowestPriceWithShipping) ??
     positiveNumber(details.marketPrice) ??
     positiveNumber(details.lowestPrice);
 
-  if (detailsFloor != null && candidate.totalPrice < detailsFloor * 0.85) {
+  if (
+    detailsFloor != null &&
+    candidate.totalPrice <= detailsFloor * RELATIVE_FLOOR &&
+    detailsFloor - candidate.totalPrice >= MIN_OUTLIER_GAP
+  ) {
     return true;
   }
 
-  if (nextCandidate && candidate.totalPrice < nextCandidate.totalPrice * 0.85) {
+  if (
+    nextCandidate &&
+    candidate.totalPrice <= nextCandidate.totalPrice * RELATIVE_FLOOR &&
+    nextCandidate.totalPrice - candidate.totalPrice >= MIN_OUTLIER_GAP
+  ) {
     return true;
   }
 
