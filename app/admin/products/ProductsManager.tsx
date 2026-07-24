@@ -833,7 +833,7 @@ export function ProductsManager({
                           <p className="mt-2 text-xs text-gray-500">
                             {isTracked
                               ? product.autoUpdatePrice
-                                ? "Reprices every 2 hours"
+                                ? "Reprices every 12 hours"
                                 : "Manual price lock"
                               : "No TCGplayer source"}
                           </p>
