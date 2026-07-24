@@ -28,6 +28,7 @@ export type ProductCardData = {
   slug: string;
   name: string;
   sourceSetName: string | null;
+  featuredOrder: number;
   priceCents: number;
   compareAtCents: number | null;
   quantity: number;

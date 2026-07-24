@@ -18,6 +18,10 @@ function toErrorMessage(error: unknown) {
   return "Unknown sync error.";
 }
 
+function formatDollarsFromCents(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 export async function syncTcgplayerProducts(productIds?: string[]) {
   const trackedProducts = await prisma.product.findMany({
     where: {
@@ -27,7 +31,10 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
     },
     select: {
       id: true,
+      name: true,
       autoUpdatePrice: true,
+      priceCents: true,
+      compareAtCents: true,
       sourceProductId: true,
       sourcePriceCents: true,
     },
@@ -37,6 +44,7 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
   let failed = 0;
   let updatedPrices = 0;
   let warnings = 0;
+  const warningProducts: string[] = [];
 
   for (const product of trackedProducts) {
     if (!product.sourceProductId) continue;
@@ -53,24 +61,35 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
         sourcePriceCents,
       });
 
+      const manualReviewMessage = resolved.requiresManualReview
+        ? `Price discrepancy detected for ${product.name} - manual review required. Live TCGplayer review price: ${formatDollarsFromCents(sourcePriceCents)}.`
+        : resolved.warningMessage;
+
       await prisma.product.update({
         where: { id: product.id },
         data: {
-          compareAtCents: pricing.compareAtCents,
-          priceCents: product.autoUpdatePrice ? pricing.priceCents : undefined,
-          sourcePriceCents,
+          compareAtCents: resolved.requiresManualReview ? product.compareAtCents : pricing.compareAtCents,
+          priceCents: resolved.requiresManualReview
+            ? undefined
+            : product.autoUpdatePrice
+              ? pricing.priceCents
+              : undefined,
+          sourcePriceCents: resolved.requiresManualReview ? product.sourcePriceCents : sourcePriceCents,
           sourceImageUrl: buildTcgplayerImageUrl(product.sourceProductId, 1000),
           sourceProductLine: details.productLineName?.trim() ?? null,
           sourceProductType: details.productTypeName?.trim() ?? null,
           sourceSetName: details.setName?.trim() ?? null,
           lastSyncedAt: new Date(),
-          lastSyncError: resolved.warningMessage,
+          lastSyncError: manualReviewMessage,
         },
       });
 
       synced += 1;
-      if (product.autoUpdatePrice) updatedPrices += 1;
-      if (resolved.warningMessage) warnings += 1;
+      if (!resolved.requiresManualReview && product.autoUpdatePrice) updatedPrices += 1;
+      if (manualReviewMessage) {
+        warnings += 1;
+        warningProducts.push(product.name);
+      }
     } catch (error) {
       failed += 1;
       await prisma.product.update({
@@ -89,5 +108,6 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
     synced,
     updatedPrices,
     warnings,
+    warningProducts,
   };
 }

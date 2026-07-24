@@ -134,6 +134,7 @@ export default async function AdminProductsPage({
           lastSyncError: product.lastSyncError,
           quantity: product.quantity,
           featuredOnHome: product.featuredOnHome,
+          featuredOrder: product.featuredOrder,
           isActive: product.isActive,
           categoryId: product.categoryId,
         }))}

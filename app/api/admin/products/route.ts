@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import {
+  clearOtherExclusiveSaleProducts,
+  isExclusiveSaleFeaturedOrder,
+  normalizeFeaturedPlacement,
+} from "@/lib/featured-home";
 import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { getCategoryUrl, getHomepageUrl, getProductUrl, submitIndexNowUrls } from "@/lib/indexnow";
@@ -41,7 +46,7 @@ function emptyStringToNull(value: string | null | undefined) {
 }
 
 function normalizeProductInput(data: z.infer<typeof productSchema>) {
-  const normalized = {
+  const normalized = normalizeFeaturedPlacement({
     ...data,
     sourceMarketplace: emptyStringToNull(data.sourceMarketplace),
     sourceUrl: emptyStringToNull(data.sourceUrl),
@@ -53,7 +58,7 @@ function normalizeProductInput(data: z.infer<typeof productSchema>) {
     seoTitle: emptyStringToNull(data.seoTitle),
     seoDescription: emptyStringToNull(data.seoDescription),
     seoKeywords: emptyStringToNull(data.seoKeywords),
-  };
+  });
 
   if (normalized.sourceMarketplace === "tcgplayer") {
     const pricing = applyTrackedTcgplayerPricing({
@@ -91,25 +96,34 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const product = await prisma.product.create({
-      data: {
-        ...data,
-        images: { create: images.map((img, idx) => ({ ...img, sortOrder: idx })) },
-      },
-      select: {
-        id: true,
-        slug: true,
-        category: {
-          select: {
-            slug: true,
-            parent: {
-              select: {
-                slug: true,
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          ...data,
+          images: { create: images.map((img, idx) => ({ ...img, sortOrder: idx })) },
+        },
+        select: {
+          id: true,
+          slug: true,
+          featuredOrder: true,
+          category: {
+            select: {
+              slug: true,
+              parent: {
+                select: {
+                  slug: true,
+                },
               },
             },
           },
         },
-      },
+      });
+
+      if (isExclusiveSaleFeaturedOrder(created.featuredOrder)) {
+        await clearOtherExclusiveSaleProducts(tx, created.id);
+      }
+
+      return created;
     });
     revalidateCatalogCache();
     await submitIndexNowUrls([

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { EXCLUSIVE_SALE_FEATURED_ORDER, isExclusiveSaleFeaturedOrder } from "@/lib/featured-home";
 import { formatCents, slugify } from "@/lib/format";
 import type { CategoryOption } from "@/lib/admin";
 import { getDisplayProductName } from "@/lib/product-display";
@@ -28,6 +29,7 @@ type TcgplayerImportResponse = {
   sourceProductType: string;
   sourceSetName: string;
   sourceUrl: string;
+  warningMessage: string | null;
 };
 
 export type ProductFormValues = {
@@ -158,9 +160,35 @@ export function ProductForm({
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
   const [importMessage, setImportMessage] = useState("");
+  const [importWarning, setImportWarning] = useState("");
+  const isExclusiveSale = isExclusiveSaleFeaturedOrder(values.featuredOrder);
 
   function update<K extends keyof ProductFormValues>(key: K, val: ProductFormValues[K]) {
     setValues((current) => ({ ...current, [key]: val }));
+  }
+
+  function updateFeaturedOnHome(checked: boolean) {
+    setValues((current) => ({
+      ...current,
+      featuredOnHome: checked,
+      featuredOrder: checked
+        ? isExclusiveSaleFeaturedOrder(current.featuredOrder)
+          ? EXCLUSIVE_SALE_FEATURED_ORDER
+          : Math.max(0, current.featuredOrder)
+        : 0,
+    }));
+  }
+
+  function updateExclusiveSale(checked: boolean) {
+    setValues((current) => ({
+      ...current,
+      featuredOnHome: checked ? true : current.featuredOnHome,
+      featuredOrder: checked
+        ? EXCLUSIVE_SALE_FEATURED_ORDER
+        : isExclusiveSaleFeaturedOrder(current.featuredOrder)
+          ? 0
+          : current.featuredOrder,
+    }));
   }
 
   function syncCategory(categoryId: string) {
@@ -244,6 +272,7 @@ export function ProductForm({
     setImporting(true);
     setImportError("");
     setImportMessage("");
+    setImportWarning("");
 
     const response = await fetch("/api/admin/products/import-tcgplayer", {
       method: "POST",
@@ -300,6 +329,7 @@ export function ProductForm({
     }
 
     setImportMessage("TCGplayer product imported. Review anything you want, then save.");
+    setImportWarning(typeof data.warningMessage === "string" ? data.warningMessage : "");
     setImporting(false);
   }
 
@@ -372,6 +402,7 @@ export function ProductForm({
         </div>
 
         {importError && <p className="rounded-md bg-red-950 px-4 py-2 text-sm text-red-300">{importError}</p>}
+        {importWarning && <p className="rounded-md bg-amber-950/70 px-4 py-2 text-sm text-amber-200">{importWarning}</p>}
 
         {values.sourceMarketplace === "tcgplayer" && (
           <div className="grid gap-4 rounded-lg border border-border bg-bg/40 p-4 lg:grid-cols-2">
@@ -398,6 +429,11 @@ export function ProductForm({
               <p className="text-xs text-gray-500">
                 Turn this off any time you want to manually override the live TCGplayer price.
               </p>
+              {!values.autoUpdatePrice && importWarning ? (
+                <p className="text-xs text-amber-300">
+                  Auto pricing stays off until you manually review this discrepancy.
+                </p>
+              ) : null}
             </div>
           </div>
         )}
@@ -606,12 +642,23 @@ export function ProductForm({
           <input
             type="checkbox"
             checked={values.featuredOnHome}
-            onChange={(e) => update("featuredOnHome", e.target.checked)}
+            onChange={(e) => updateFeaturedOnHome(e.target.checked)}
             className="h-4 w-4"
           />
           Appear on Front Page carousel
         </label>
         {values.featuredOnHome && (
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={isExclusiveSale}
+              onChange={(e) => updateExclusiveSale(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Pin as the static EXCLUSIVE SALE card beside the hero
+          </label>
+        )}
+        {values.featuredOnHome && !isExclusiveSale && (
           <div className="max-w-xs">
             <label className="mb-1 block text-sm text-gray-400">Carousel order (lower = earlier)</label>
             <input
@@ -621,6 +668,11 @@ export function ProductForm({
               className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
             />
           </div>
+        )}
+        {values.featuredOnHome && isExclusiveSale && (
+          <p className="text-xs text-amber-300">
+            This product stays pinned in the hero-side spotlight while the rest of your featured products keep rotating.
+          </p>
         )}
         <label className="flex items-center gap-2 text-sm text-gray-300">
           <input

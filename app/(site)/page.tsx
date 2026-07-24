@@ -11,6 +11,7 @@ import {
   getHomeCategoryPreviews,
   toCardProps,
 } from "@/lib/products";
+import { isExclusiveSaleFeaturedOrder } from "@/lib/featured-home";
 import { getSiteSettings } from "@/lib/site-settings";
 import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
@@ -104,6 +105,9 @@ export default async function HomePage() {
     getSiteSettings(),
     getHomeCategoryPreviews(5),
   ]);
+  const exclusiveFeaturedProduct =
+    featured.find((product) => isExclusiveSaleFeaturedOrder(product.featuredOrder)) ?? null;
+  const rotatingHeroProducts = featured.filter((product) => product.id !== exclusiveFeaturedProduct?.id);
 
   const carouselProducts = featured.map(toCardProps);
   const mobileCategoryPreviews = categoryPreviews.slice(0, 4);
@@ -131,7 +135,10 @@ export default async function HomePage() {
                   </Link>
                 </div>
 
-                <RotatingHeroFeaturedList products={featured} />
+                <RotatingHeroFeaturedList
+                  exclusiveProduct={exclusiveFeaturedProduct}
+                  products={rotatingHeroProducts}
+                />
               </div>
             </div>
           ) : null}
@@ -139,7 +146,10 @@ export default async function HomePage() {
 
         {featured.length > 0 ? (
           <div className="relative z-10 -mt-14 px-3 pb-3 sm:hidden">
-            <MobileHeroFeaturedWidget products={featured} />
+            <MobileHeroFeaturedWidget
+              exclusiveProduct={exclusiveFeaturedProduct}
+              products={rotatingHeroProducts}
+            />
           </div>
         ) : null}
       </section>

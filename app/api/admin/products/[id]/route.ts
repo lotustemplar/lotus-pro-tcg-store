@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import {
+  clearOtherExclusiveSaleProducts,
+  isExclusiveSaleFeaturedOrder,
+  normalizeFeaturedPlacement,
+} from "@/lib/featured-home";
 import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { getCategoryUrl, getHomepageUrl, getProductUrl, submitIndexNowUrls } from "@/lib/indexnow";
@@ -41,7 +46,7 @@ function emptyStringToNull(value: string | null | undefined) {
 }
 
 function normalizeProductInput(data: z.infer<typeof productSchema>) {
-  const normalized = {
+  const normalized = normalizeFeaturedPlacement({
     ...data,
     sourceMarketplace: emptyStringToNull(data.sourceMarketplace),
     sourceUrl: emptyStringToNull(data.sourceUrl),
@@ -53,7 +58,7 @@ function normalizeProductInput(data: z.infer<typeof productSchema>) {
     seoTitle: emptyStringToNull(data.seoTitle),
     seoDescription: emptyStringToNull(data.seoDescription),
     seoKeywords: emptyStringToNull(data.seoKeywords),
-  };
+  });
 
   if (normalized.sourceMarketplace === "tcgplayer") {
     const pricing = applyTrackedTcgplayerPricing({
@@ -85,6 +90,7 @@ function toAdminProductPayload(product: {
   lastSyncError: string | null;
   quantity: number;
   featuredOnHome: boolean;
+  featuredOrder: number;
   isActive: boolean;
   categoryId: string;
 }) {
@@ -101,6 +107,7 @@ function toAdminProductPayload(product: {
     lastSyncError: product.lastSyncError,
     quantity: product.quantity,
     featuredOnHome: product.featuredOnHome,
+    featuredOrder: product.featuredOrder,
     isActive: product.isActive,
     categoryId: product.categoryId,
   };
@@ -114,7 +121,7 @@ const inlineProductSchema = z
     quantity: z.number().int().min(0).optional(),
     categoryId: z.string().min(1).optional(),
     featuredOnHome: z.boolean().optional(),
-    featuredOrder: z.number().int().min(0).optional(),
+    featuredOrder: z.number().int().optional(),
     isActive: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -162,9 +169,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   try {
-    const [, updatedProduct] = await prisma.$transaction([
-      prisma.productImage.deleteMany({ where: { productId: params.id } }),
-      prisma.product.update({
+    const updatedProduct = await prisma.$transaction(async (tx) => {
+      await tx.productImage.deleteMany({ where: { productId: params.id } });
+      const nextProduct = await tx.product.update({
         where: { id: params.id },
         data: {
           ...data,
@@ -172,6 +179,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         },
         select: {
           slug: true,
+          featuredOrder: true,
           category: {
             select: {
               slug: true,
@@ -183,8 +191,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             },
           },
         },
-      }),
-    ]);
+      });
+
+      if (isExclusiveSaleFeaturedOrder(nextProduct.featuredOrder)) {
+        await clearOtherExclusiveSaleProducts(tx, params.id);
+      }
+
+      return nextProduct;
+    });
     revalidateCatalogCache();
     await submitIndexNowUrls([
       getHomepageUrl(),
@@ -225,6 +239,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       slug: true,
       autoUpdatePrice: true,
       priceCents: true,
+      featuredOnHome: true,
+      featuredOrder: true,
       sourceMarketplace: true,
       sourcePriceCents: true,
       category: {
@@ -244,7 +260,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Product not found." }, { status: 404 });
   }
 
+  const nextFeaturedPlacement = normalizeFeaturedPlacement({
+    featuredOnHome: parsed.data.featuredOnHome ?? existing.featuredOnHome,
+    featuredOrder: parsed.data.featuredOrder ?? existing.featuredOrder,
+  });
+
   let patchData: Record<string, unknown> = parsed.data;
+  patchData = {
+    ...patchData,
+    featuredOnHome: nextFeaturedPlacement.featuredOnHome,
+    featuredOrder: nextFeaturedPlacement.featuredOrder,
+  };
 
   if (existing.sourceMarketplace === "tcgplayer") {
     const hasExplicitPriceOverride = typeof parsed.data.priceCents === "number";
@@ -258,43 +284,52 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     });
 
     patchData = {
-      ...parsed.data,
+      ...patchData,
       autoUpdatePrice: nextAutoUpdatePrice,
       compareAtCents: pricing.compareAtCents,
       ...(nextAutoUpdatePrice ? { priceCents: pricing.priceCents } : {}),
     };
   }
 
-  const updated = await prisma.product.update({
-    where: { id: params.id },
-    data: patchData,
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      priceCents: true,
-      sourceMarketplace: true,
-      sourceSetName: true,
-      sourceProductType: true,
-      sourcePriceCents: true,
-      autoUpdatePrice: true,
-      lastSyncedAt: true,
-      lastSyncError: true,
-      quantity: true,
-      featuredOnHome: true,
-      isActive: true,
-      categoryId: true,
-      category: {
-        select: {
-          slug: true,
-          parent: {
-            select: {
-              slug: true,
+  const updated = await prisma.$transaction(async (tx) => {
+    const nextProduct = await tx.product.update({
+      where: { id: params.id },
+      data: patchData,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        priceCents: true,
+        sourceMarketplace: true,
+        sourceSetName: true,
+        sourceProductType: true,
+        sourcePriceCents: true,
+        autoUpdatePrice: true,
+        lastSyncedAt: true,
+        lastSyncError: true,
+        quantity: true,
+        featuredOnHome: true,
+        featuredOrder: true,
+        isActive: true,
+        categoryId: true,
+        category: {
+          select: {
+            slug: true,
+            parent: {
+              select: {
+                slug: true,
+              },
             },
           },
         },
       },
-    },
+    });
+
+    if (isExclusiveSaleFeaturedOrder(nextProduct.featuredOrder)) {
+      await clearOtherExclusiveSaleProducts(tx, nextProduct.id);
+    }
+
+    return nextProduct;
   });
   revalidateCatalogCache();
   await submitIndexNowUrls([

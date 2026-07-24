@@ -65,7 +65,9 @@ export async function POST(req: NextRequest) {
     case "setFeatured": {
       const result = await prisma.product.updateMany({
         where: { id: { in: parsed.data.productIds } },
-        data: { featuredOnHome: parsed.data.value },
+        data: parsed.data.value
+          ? { featuredOnHome: true }
+          : { featuredOnHome: false, featuredOrder: 0 },
       });
       count = result.count;
       break;

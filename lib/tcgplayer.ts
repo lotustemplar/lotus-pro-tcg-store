@@ -65,6 +65,7 @@ export type TcgplayerImportPreview = {
   sourceProductType: string;
   sourceSetName: string;
   sourceUrl: string;
+  warningMessage: string | null;
 };
 
 type TcgplayerListingsResponse = {
@@ -100,6 +101,7 @@ export type ResolvedTcgplayerSourcePrice = {
   usedShippingInclusivePrice: boolean;
   topListing: TcgplayerTopListing | null;
   warningMessage: string | null;
+  requiresManualReview: boolean;
 };
 
 function normalizeListing(
@@ -393,6 +395,7 @@ export async function fetchResolvedTcgplayerPricing(
         usedShippingInclusivePrice: resolvedTopListing.shippingPrice > 0,
         topListing: resolvedTopListing,
         warningMessage,
+        requiresManualReview: skippedSuspiciousListings.length > 0,
       },
     };
   }
@@ -417,6 +420,7 @@ export async function fetchResolvedTcgplayerPricing(
         topListing: null,
         warningMessage:
           warningMessage ?? "Warning: Used TCGplayer summary pricing because listing-level pricing was unavailable.",
+        requiresManualReview: skippedSuspiciousListings.length > 0,
       },
     };
   }
@@ -448,6 +452,7 @@ export async function fetchResolvedTcgplayerPricing(
           topListing: null,
           warningMessage:
             warningMessage ?? "Warning: Preserved the previous tracked price because fresh listing pricing looked unsafe.",
+          requiresManualReview: true,
         },
       };
     }
@@ -463,6 +468,7 @@ export async function fetchResolvedTcgplayerPricing(
         topListing: null,
         warningMessage:
           warningMessage ?? "Warning: Fell back to TCGplayer market price because listing-level pricing was unavailable.",
+        requiresManualReview: skippedSuspiciousListings.length > 0,
       },
     };
   }
@@ -476,6 +482,7 @@ export async function fetchResolvedTcgplayerPricing(
       topListing: null,
       warningMessage:
         warningMessage ?? "Warning: Fell back to TCGplayer lowest price because safer pricing data was unavailable.",
+      requiresManualReview: skippedSuspiciousListings.length > 0,
     },
   };
 }
@@ -617,7 +624,7 @@ export async function importFromTcgplayerUrl(url: string, categories: CategoryRe
   const sourcePriceCents = resolved.sourcePriceCents;
 
   return {
-    autoUpdatePrice: true,
+    autoUpdatePrice: !resolved.requiresManualReview,
     categoryId: findSuggestedCategoryId(categories, {
       productLineName: details.productLineName ?? "",
       productName,
@@ -627,7 +634,7 @@ export async function importFromTcgplayerUrl(url: string, categories: CategoryRe
     description,
     images: [{ url: buildTcgplayerImageUrl(productId, 1000), altText: productName }],
     name: productName,
-    priceCents: getDiscountedStorePriceCents(sourcePriceCents),
+    priceCents: resolved.requiresManualReview ? sourcePriceCents : getDiscountedStorePriceCents(sourcePriceCents),
     seoDescription: description.slice(0, 155),
     seoTitle: productName,
     slug: slugify(productName),
@@ -639,5 +646,8 @@ export async function importFromTcgplayerUrl(url: string, categories: CategoryRe
     sourceProductType: details.productTypeName,
     sourceSetName: details.setName,
     sourceUrl: url.trim(),
+    warningMessage: resolved.requiresManualReview
+      ? `Price discrepancy detected for ${productName}. Manual review required before auto pricing is enabled.`
+      : resolved.warningMessage,
   };
 }

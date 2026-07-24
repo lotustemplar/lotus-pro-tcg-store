@@ -168,36 +168,59 @@ function useFeaturedRotation(products: FeaturedProduct[], batchSize: number) {
   };
 }
 
-export function RotatingHeroFeaturedList({ products }: { products: FeaturedProduct[] }) {
+export function RotatingHeroFeaturedList({
+  exclusiveProduct,
+  products,
+}: {
+  exclusiveProduct?: FeaturedProduct | null;
+  products: FeaturedProduct[];
+}) {
+  const batchSize = exclusiveProduct ? 2 : DESKTOP_BATCH_SIZE;
   const { batchCount, batchIndex, currentProducts, isTransitioning, goNext, goPrevious, goToIndex } =
-    useFeaturedRotation(products, DESKTOP_BATCH_SIZE);
+    useFeaturedRotation(products, batchSize);
+  const hasRotatingProducts = currentProducts.length > 0;
+
+  if (!exclusiveProduct && !hasRotatingProducts) return null;
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        {batchCount > 1 && <ArrowButton direction="previous" onClick={goPrevious} />}
-        <div
-          className={`space-y-3 transition-all duration-[420ms] ease-out ${
-            isTransitioning ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
-          }`}
-        >
-          {currentProducts.map((product) => (
-            <HeroFeaturedProductCard key={`${product.id}-${batchIndex}`} product={product} />
-          ))}
-        </div>
-        {batchCount > 1 && <ArrowButton direction="next" onClick={goNext} />}
-      </div>
-      <BatchIndicators count={batchCount} activeIndex={batchIndex} onSelect={goToIndex} />
+      {exclusiveProduct ? <HeroFeaturedProductCard product={exclusiveProduct} variant="exclusive" /> : null}
+
+      {hasRotatingProducts ? (
+        <>
+          <div className="relative">
+            {batchCount > 1 && <ArrowButton direction="previous" onClick={goPrevious} />}
+            <div
+              className={`space-y-3 transition-all duration-[420ms] ease-out ${
+                isTransitioning ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+              }`}
+            >
+              {currentProducts.map((product) => (
+                <HeroFeaturedProductCard key={`${product.id}-${batchIndex}`} product={product} />
+              ))}
+            </div>
+            {batchCount > 1 && <ArrowButton direction="next" onClick={goNext} />}
+          </div>
+          <BatchIndicators count={batchCount} activeIndex={batchIndex} onSelect={goToIndex} />
+        </>
+      ) : null}
     </div>
   );
 }
 
-export function MobileHeroFeaturedWidget({ products }: { products: FeaturedProduct[] }) {
+export function MobileHeroFeaturedWidget({
+  exclusiveProduct,
+  products,
+}: {
+  exclusiveProduct?: FeaturedProduct | null;
+  products: FeaturedProduct[];
+}) {
   const { batchCount, batchIndex, currentProducts, isTransitioning, goNext, goPrevious, goToIndex } =
     useFeaturedRotation(products, MOBILE_BATCH_SIZE);
   const activeProduct = currentProducts[0];
+  const hasRotatingProduct = Boolean(activeProduct);
 
-  if (!activeProduct) return null;
+  if (!exclusiveProduct && !hasRotatingProduct) return null;
 
   return (
     <div className="hot-products-card space-y-3 rounded-[26px] border border-red-300/45 bg-[linear-gradient(180deg,rgba(20,9,8,0.78),rgba(7,10,18,0.96))] p-3 shadow-[0_24px_70px_rgba(2,6,16,0.48)] backdrop-blur-xl">
@@ -208,7 +231,7 @@ export function MobileHeroFeaturedWidget({ products }: { products: FeaturedProdu
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {batchCount > 1 ? (
+          {batchCount > 1 && hasRotatingProduct ? (
             <>
               <button
                 type="button"
@@ -231,15 +254,21 @@ export function MobileHeroFeaturedWidget({ products }: { products: FeaturedProdu
         </div>
       </div>
 
-      <div
-        className={`transition-all duration-[420ms] ease-out ${
-          isTransitioning ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
-        }`}
-      >
-        <HeroFeaturedProductCard key={`${activeProduct.id}-${batchIndex}`} product={activeProduct} />
-      </div>
+      {exclusiveProduct ? <HeroFeaturedProductCard product={exclusiveProduct} variant="exclusive" /> : null}
 
-      <BatchIndicators count={batchCount} activeIndex={batchIndex} onSelect={goToIndex} />
+      {hasRotatingProduct ? (
+        <>
+          <div
+            className={`transition-all duration-[420ms] ease-out ${
+              isTransitioning ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+            }`}
+          >
+            <HeroFeaturedProductCard key={`${activeProduct.id}-${batchIndex}`} product={activeProduct} />
+          </div>
+
+          <BatchIndicators count={batchCount} activeIndex={batchIndex} onSelect={goToIndex} />
+        </>
+      ) : null}
     </div>
   );
 }

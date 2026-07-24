@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { EXCLUSIVE_SALE_FEATURED_ORDER, isExclusiveSaleFeaturedOrder } from "@/lib/featured-home";
 import { formatCents } from "@/lib/format";
 
 type TopLevelCategory = {
@@ -31,6 +32,7 @@ type AdminProduct = {
   lastSyncError: string | null;
   quantity: number;
   featuredOnHome: boolean;
+  featuredOrder: number;
   isActive: boolean;
   categoryId: string;
 };
@@ -53,7 +55,10 @@ type Message = {
 };
 
 function isSyncWarning(message: string | null) {
-  return typeof message === "string" && message.startsWith("Warning:");
+  return (
+    typeof message === "string" &&
+    (message.startsWith("Warning:") || message.startsWith("Price discrepancy detected"))
+  );
 }
 
 type BulkCategoryState = {
@@ -140,6 +145,42 @@ export function ProductsManager({
   function setProductField<K extends keyof AdminProduct>(id: string, key: K, value: AdminProduct[K]) {
     setProducts((current) =>
       current.map((product) => (product.id === id ? { ...product, [key]: value } : product))
+    );
+  }
+
+  function setProductFeaturedOnHome(id: string, checked: boolean) {
+    setProducts((current) =>
+      current.map((product) =>
+        product.id === id
+          ? {
+              ...product,
+              featuredOnHome: checked,
+              featuredOrder: checked
+                ? isExclusiveSaleFeaturedOrder(product.featuredOrder)
+                  ? EXCLUSIVE_SALE_FEATURED_ORDER
+                  : Math.max(0, product.featuredOrder)
+                : 0,
+            }
+          : product,
+      ),
+    );
+  }
+
+  function setProductExclusiveSale(id: string, checked: boolean) {
+    setProducts((current) =>
+      current.map((product) =>
+        product.id === id
+          ? {
+              ...product,
+              featuredOnHome: checked ? true : product.featuredOnHome,
+              featuredOrder: checked
+                ? EXCLUSIVE_SALE_FEATURED_ORDER
+                : isExclusiveSaleFeaturedOrder(product.featuredOrder)
+                  ? 0
+                  : product.featuredOrder,
+            }
+          : product,
+      ),
     );
   }
 
@@ -265,6 +306,7 @@ export function ProductsManager({
         autoUpdatePrice: product.autoUpdatePrice,
         quantity: product.quantity,
         featuredOnHome: product.featuredOnHome,
+        featuredOrder: product.featuredOrder,
         isActive: product.isActive,
       }),
     });
@@ -367,10 +409,18 @@ export function ProductsManager({
     } else if (payload.action === "setFeatured") {
       const value = Boolean(payload.value);
       setProducts((current) =>
-        current.map((entry) => (selectedIdSet.has(entry.id) ? { ...entry, featuredOnHome: value } : entry))
+        current.map((entry) =>
+          selectedIdSet.has(entry.id)
+            ? { ...entry, featuredOnHome: value, featuredOrder: value ? entry.featuredOrder : 0 }
+            : entry,
+        )
       );
       setSavedProducts((current) =>
-        current.map((entry) => (selectedIdSet.has(entry.id) ? { ...entry, featuredOnHome: value } : entry))
+        current.map((entry) =>
+          selectedIdSet.has(entry.id)
+            ? { ...entry, featuredOnHome: value, featuredOrder: value ? entry.featuredOrder : 0 }
+            : entry,
+        )
       );
     } else if (payload.action === "setCategory") {
       const categoryId = String(payload.categoryId);
@@ -420,7 +470,11 @@ export function ProductsManager({
 
     setMessage({
       type: "success",
-      text: `Scanned ${data.scanned ?? 0} tracked product(s). Updated ${data.updatedPrices ?? 0} storefront price(s).${(data.warnings ?? 0) > 0 ? ` Flagged ${data.warnings} warning(s).` : ""}`,
+      text: `Scanned ${data.scanned ?? 0} tracked product(s). Updated ${data.updatedPrices ?? 0} storefront price(s).${
+        (data.warnings ?? 0) > 0
+          ? ` Flagged ${data.warnings} warning(s): ${Array.isArray(data.warningProducts) && data.warningProducts.length > 0 ? data.warningProducts.join(", ") : "manual review required."}`
+          : ""
+      }`,
     });
     setSyncingSourcePrices(false);
     router.refresh();
@@ -713,6 +767,7 @@ export function ProductsManager({
                     const dirty = dirtyIdSet.has(product.id);
                     const saving = savingIdSet.has(product.id);
                     const isTracked = product.sourceMarketplace === "tcgplayer";
+                    const isExclusiveSale = isExclusiveSaleFeaturedOrder(product.featuredOrder);
 
                     return (
                       <tr key={product.id} className="border-t border-border bg-bg-panel/40 align-top">
@@ -845,9 +900,16 @@ export function ProductsManager({
                               <input
                                 type="checkbox"
                                 checked={product.featuredOnHome}
-                                onChange={(event) =>
-                                  setProductField(product.id, "featuredOnHome", event.target.checked)
-                                }
+                                onChange={(event) => setProductFeaturedOnHome(product.id, event.target.checked)}
+                                className="h-4 w-4"
+                              />
+                            </label>
+                            <label className="flex items-center justify-between gap-2 rounded-md border border-amber-300/18 bg-[linear-gradient(180deg,rgba(52,24,12,0.52),rgba(16,12,22,0.84))] px-2 py-1.5 text-xs text-amber-100">
+                              <span>Exclusive</span>
+                              <input
+                                type="checkbox"
+                                checked={isExclusiveSale}
+                                onChange={(event) => setProductExclusiveSale(product.id, event.target.checked)}
                                 className="h-4 w-4"
                               />
                             </label>
@@ -889,6 +951,7 @@ export function ProductsManager({
                           </div>
                           <div className="mt-2 space-y-1 text-right text-xs text-gray-500">
                             <p>{dirty ? "Unsaved changes" : categoryName(product.categoryId)}</p>
+                            {isExclusiveSale && <p className="text-amber-300">Pinned as the static hero sale card.</p>}
                             {product.lastSyncError && (
                               <p className={isSyncWarning(product.lastSyncError) ? "text-amber-300" : "text-red-300"}>
                                 {product.lastSyncError}
