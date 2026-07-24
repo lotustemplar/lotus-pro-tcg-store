@@ -2,6 +2,17 @@ import { prisma } from "./prisma";
 import { buildTcgplayerImageUrl, fetchResolvedTcgplayerPricing } from "./tcgplayer";
 import { applyTrackedTcgplayerPricing } from "./pricing";
 
+export function isDatabaseQuotaExceededError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes("exceeded the data transfer quota") ||
+    normalized.includes("paused after reaching") ||
+    normalized.includes("quota")
+  );
+}
+
 function toErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return "Unknown sync error.";
