@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatCents } from "@/lib/format";
 import { formatAdminAddressLines, getAdminOrderDetails } from "@/lib/admin-orders";
+import { ShipmentManager } from "./ShipmentManager";
 
 export const dynamic = "force-dynamic";
 
@@ -201,6 +202,19 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
                 <dd className="text-lg font-semibold text-brand-200">{formatCents(order.totalCents)}</dd>
               </div>
             </dl>
+          </DetailCard>
+
+          <DetailCard title="Tracking & Customer Email">
+            <ShipmentManager
+              orderId={order.id}
+              customerEmail={order.stripe.customerEmail || order.email}
+              trackingCarrier={order.trackingCarrier}
+              trackingNumber={order.trackingNumber}
+              trackingUrl={order.trackingUrl}
+              shippedAt={order.shippedAt?.toISOString() ?? null}
+              trackingEmailSentAt={order.trackingEmailSentAt?.toISOString() ?? null}
+              trackingEmailError={order.trackingEmailError}
+            />
           </DetailCard>
 
           <DetailCard title="Stripe Payment Details">

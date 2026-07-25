@@ -50,6 +50,12 @@ export type AdminOrderDetails = {
   subtotalCents: number;
   shippingCents: number;
   totalCents: number;
+  trackingCarrier: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  shippedAt: Date | null;
+  trackingEmailSentAt: Date | null;
+  trackingEmailError: string | null;
   createdAt: Date;
   updatedAt: Date;
   shippingAddressRaw: string | null;
@@ -293,6 +299,12 @@ export async function getAdminOrderDetails(orderId: string): Promise<AdminOrderD
     subtotalCents: order.subtotalCents,
     shippingCents: order.shippingCents,
     totalCents: order.totalCents,
+    trackingCarrier: order.trackingCarrier,
+    trackingNumber: order.trackingNumber,
+    trackingUrl: order.trackingUrl,
+    shippedAt: order.shippedAt,
+    trackingEmailSentAt: order.trackingEmailSentAt,
+    trackingEmailError: order.trackingEmailError,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     shippingAddressRaw: order.shippingAddress,

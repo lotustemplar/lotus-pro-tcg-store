@@ -104,6 +104,12 @@ model Order {
   shippingCents       Int
   totalCents          Int
   shippingAddress     String?     // JSON blob
+  trackingCarrier     String?
+  trackingNumber      String?
+  trackingUrl         String?
+  shippedAt           DateTime?
+  trackingEmailSentAt DateTime?
+  trackingEmailError  String?
   items               OrderItem[]
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt

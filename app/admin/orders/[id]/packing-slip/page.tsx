@@ -116,6 +116,18 @@ export default async function PackingSlipPage({ params }: { params: { id: string
             <section className="rounded-2xl border border-black/10 bg-black/[0.02] p-5">
               <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-black/55">Order Summary</h2>
               <dl className="mt-4 space-y-3 text-sm">
+                {order.trackingNumber ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-black/60">Carrier</dt>
+                      <dd>{order.trackingCarrier || "Carrier"}</dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-black/60">Tracking</dt>
+                      <dd className="font-mono text-xs">{order.trackingNumber}</dd>
+                    </div>
+                  </>
+                ) : null}
                 <div className="flex items-center justify-between">
                   <dt className="text-black/60">Subtotal</dt>
                   <dd>{formatCents(order.subtotalCents)}</dd>
