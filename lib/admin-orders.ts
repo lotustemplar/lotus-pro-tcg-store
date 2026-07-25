@@ -181,7 +181,7 @@ async function getStripeSummary(order: NonNullable<OrderRecord>): Promise<AdminO
   if (!order.stripeSessionId) {
     return {
       ...fallback,
-      error: "This order does not have a Stripe session attached yet.",
+      error: "This order was created manually in the admin and does not have a Stripe session attached.",
     };
   }
 
