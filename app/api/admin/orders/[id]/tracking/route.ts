@@ -14,6 +14,18 @@ const schema = z.object({
   sendEmail: z.boolean().optional().default(false),
 });
 
+function getStoredCustomerName(shippingAddress: string | null) {
+  if (!shippingAddress) return null;
+
+  try {
+    const parsed = JSON.parse(shippingAddress) as { name?: unknown } | null;
+    const name = typeof parsed?.name === "string" ? parsed.name.trim() : "";
+    return name.length > 0 ? name : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getAdminSession();
   if (!session) {
@@ -60,6 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     select: {
       id: true,
       email: true,
+      shippingAddress: true,
       subtotalCents: true,
       shippingCents: true,
       totalCents: true,
@@ -102,7 +115,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       siteSettings,
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
       orderId: updatedOrder.id,
-      customerName: null,
+      customerName: getStoredCustomerName(updatedOrder.shippingAddress),
       trackingCarrier,
       trackingNumber,
       trackingUrl,
