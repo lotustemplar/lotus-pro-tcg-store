@@ -6,6 +6,32 @@ import Stripe from "stripe";
 
 type OrderItemRow = { productId: string; quantity: number };
 
+function serializeShippingSnapshot(session: Stripe.Checkout.Session) {
+  const shippingDetails = session.shipping_details;
+  const customerDetails = session.customer_details;
+  const address = shippingDetails?.address ?? customerDetails?.address ?? null;
+
+  if (!address && !shippingDetails?.name && !customerDetails?.name && !customerDetails?.phone) {
+    return null;
+  }
+
+  return JSON.stringify({
+    source: shippingDetails?.address ? "stripe_shipping" : "stripe_customer",
+    name: shippingDetails?.name ?? customerDetails?.name ?? null,
+    phone: customerDetails?.phone ?? null,
+    address: address
+      ? {
+          line1: address.line1 ?? null,
+          line2: address.line2 ?? null,
+          city: address.city ?? null,
+          state: address.state ?? null,
+          postal_code: address.postal_code ?? null,
+          country: address.country ?? null,
+        }
+      : null,
+  });
+}
+
 export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature");
   const rawBody = await req.text();
@@ -36,6 +62,7 @@ export async function POST(req: NextRequest) {
             data: {
               status: "paid",
               email: session.customer_details?.email ?? order.email,
+              shippingAddress: serializeShippingSnapshot(session),
               stripePaymentIntent:
                 typeof session.payment_intent === "string" ? session.payment_intent : undefined,
             },

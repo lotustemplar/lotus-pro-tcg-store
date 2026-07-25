@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatCents } from "@/lib/format";
 
@@ -36,8 +37,15 @@ export default async function AdminOrdersPage() {
           </thead>
           <tbody>
             {orders.map((o: OrderRow) => (
-              <tr key={o.id} className="border-t border-border bg-bg-panel/40">
-                <td className="px-4 py-3 font-mono text-xs text-gray-400">{o.id.slice(0, 10)}</td>
+              <tr key={o.id} className="border-t border-border bg-bg-panel/40 transition hover:bg-bg-elevated/70">
+                <td className="px-4 py-3">
+                  <Link href={`/admin/orders/${o.id}`} className="block">
+                    <span className="block font-mono text-xs text-gray-400">{o.id.slice(0, 10)}</span>
+                    <span className="mt-1 inline-flex text-xs font-semibold text-brand-300 hover:text-brand-200">
+                      View order
+                    </span>
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-white">{o.email}</td>
                 <td className="px-4 py-3 text-gray-300">{o.items.length}</td>
                 <td className="px-4 py-3 text-brand-300">{formatCents(o.totalCents)}</td>
@@ -54,7 +62,10 @@ export default async function AdminOrdersPage() {
                     {o.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-400">{o.createdAt.toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-gray-400">
+                  {o.createdAt.toLocaleDateString()}
+                  <div className="mt-1 text-xs text-gray-500">{o.createdAt.toLocaleTimeString()}</div>
+                </td>
               </tr>
             ))}
           </tbody>

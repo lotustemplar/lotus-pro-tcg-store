@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { calculateShippingCents } from "@/lib/shipping";
 import { z } from "zod";
+import Stripe from "stripe";
 
 const schema = z.object({
   items: z
@@ -23,6 +24,16 @@ type CheckoutProduct = {
   isActive: boolean;
   images: { url: string }[];
 };
+
+function getAllowedShippingCountries(): Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[] {
+  const raw = process.env.STRIPE_ALLOWED_SHIPPING_COUNTRIES || "US";
+  const values = raw
+    .split(",")
+    .map((entry) => entry.trim().toUpperCase())
+    .filter(Boolean);
+
+  return (values.length > 0 ? values : ["US"]) as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[];
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -86,6 +97,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      phone_number_collection: { enabled: true },
+      shipping_address_collection: {
+        allowed_countries: getAllowedShippingCountries(),
+      },
       line_items: [
         ...lineItems.map((i) => ({
           quantity: i.quantity,
