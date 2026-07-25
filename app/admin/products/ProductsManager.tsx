@@ -952,6 +952,11 @@ export function ProductsManager({
                           <div className="mt-2 space-y-1 text-right text-xs text-gray-500">
                             <p>{dirty ? "Unsaved changes" : categoryName(product.categoryId)}</p>
                             {isExclusiveSale && <p className="text-amber-300">Pinned as the static hero sale card.</p>}
+                            {isExclusiveSale && product.quantity <= 0 && (
+                              <p className="text-red-300">
+                                Hidden on the live homepage until this product has stock above 0.
+                              </p>
+                            )}
                             {product.lastSyncError && (
                               <p className={isSyncWarning(product.lastSyncError) ? "text-amber-300" : "text-red-300"}>
                                 {product.lastSyncError}

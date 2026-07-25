@@ -119,7 +119,7 @@ export default async function HomePage() {
           <HeroBannerCarousel slides={settings.heroSlides} brandName={settings.brandName} />
 
           {featured.length > 0 ? (
-            <div className="pointer-events-none absolute inset-x-6 bottom-6 z-10 hidden xl:flex xl:justify-end">
+            <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10 hidden lg:flex lg:justify-end xl:inset-x-6 xl:bottom-6">
               <div className="hot-products-card pointer-events-auto w-full max-w-[430px] rounded-[28px] border border-red-300/45 bg-[linear-gradient(180deg,rgba(20,9,8,0.78),rgba(7,10,18,0.96))] p-4 backdrop-blur-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>

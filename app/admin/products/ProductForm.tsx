@@ -670,9 +670,16 @@ export function ProductForm({
           </div>
         )}
         {values.featuredOnHome && isExclusiveSale && (
-          <p className="text-xs text-amber-300">
-            This product stays pinned in the hero-side spotlight while the rest of your featured products keep rotating.
-          </p>
+          <div className="space-y-1">
+            <p className="text-xs text-amber-300">
+              This product stays pinned in the hero-side spotlight while the rest of your featured products keep rotating.
+            </p>
+            {values.quantity <= 0 ? (
+              <p className="text-xs text-red-300">
+                Exclusive hero products stay hidden on the live storefront until stock is above 0.
+              </p>
+            ) : null}
+          </div>
         )}
         <label className="flex items-center gap-2 text-sm text-gray-300">
           <input
