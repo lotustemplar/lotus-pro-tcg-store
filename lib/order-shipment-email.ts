@@ -48,7 +48,7 @@ export function buildShipmentEmail({
   trackingCarrier: string | null;
   trackingNumber: string;
   trackingUrl: string | null;
-  items: { nameSnapshot: string; quantity: number; lineTotalCents: number }[];
+  items: { nameSnapshot: string; setName?: string | null; quantity: number; lineTotalCents: number }[];
   shippingCents: number;
   totalCents: number;
 }) {
@@ -64,12 +64,19 @@ export function buildShipmentEmail({
   const preheader = escapeHtml(
     `${siteSettings.brandName} order ${orderId.slice(0, 10)} is on the way. Tracking number: ${trackingNumber}.`,
   );
+  const displayItems = items.map((item) => ({
+    ...item,
+    displayName:
+      item.setName && item.setName.trim().length > 0
+        ? `${item.setName.trim()} - ${item.nameSnapshot}`
+        : item.nameSnapshot,
+  }));
 
-  const itemsHtml = items
+  const itemsHtml = displayItems
     .map(
       (item) => `
         <tr>
-          <td style="padding:10px 12px;border-top:1px solid #e5e7eb;">${escapeHtml(item.nameSnapshot)}</td>
+          <td style="padding:10px 12px;border-top:1px solid #e5e7eb;">${escapeHtml(item.displayName)}</td>
           <td style="padding:10px 12px;border-top:1px solid #e5e7eb;text-align:center;">${item.quantity}</td>
           <td style="padding:10px 12px;border-top:1px solid #e5e7eb;text-align:right;">${escapeHtml(
             formatCents(item.lineTotalCents),
@@ -79,8 +86,8 @@ export function buildShipmentEmail({
     )
     .join("");
 
-  const itemsText = items
-    .map((item) => `- ${item.nameSnapshot} x${item.quantity} (${formatCents(item.lineTotalCents)})`)
+  const itemsText = displayItems
+    .map((item) => `- ${item.displayName} x${item.quantity} (${formatCents(item.lineTotalCents)})`)
     .join("\n");
 
   const html = `

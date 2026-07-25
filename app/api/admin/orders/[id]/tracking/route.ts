@@ -45,6 +45,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           nameSnapshot: true,
           quantity: true,
           priceCents: true,
+          product: {
+            select: {
+              sourceSetName: true,
+            },
+          },
         },
       },
     },
@@ -81,6 +86,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           nameSnapshot: true,
           quantity: true,
           priceCents: true,
+          product: {
+            select: {
+              sourceSetName: true,
+            },
+          },
         },
       },
     },
@@ -121,6 +131,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       trackingUrl,
       items: updatedOrder.items.map((item) => ({
         nameSnapshot: item.nameSnapshot,
+        setName: item.product.sourceSetName,
         quantity: item.quantity,
         lineTotalCents: item.priceCents * item.quantity,
       })),
