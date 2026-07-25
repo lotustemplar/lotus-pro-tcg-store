@@ -149,7 +149,7 @@ export default async function HomePage() {
         </div>
 
         {inStockFeaturedProducts.length > 0 ? (
-          <div className="relative z-10 -mt-14 px-3 pb-3 sm:hidden">
+          <div className="relative z-10 -mt-14 px-3 pb-3 lg:hidden">
             <MobileHeroFeaturedWidget
               exclusiveProduct={exclusiveFeaturedProduct}
               products={rotatingHeroProducts}
