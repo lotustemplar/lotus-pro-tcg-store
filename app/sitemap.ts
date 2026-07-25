@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSiteUrl } from "@/lib/metadata";
+import { isStorefrontConnectionError, logStorefrontFallback } from "@/lib/storefront-db";
 import { STORE_CACHE_TAGS, STORE_SITEMAP_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
 export const revalidate = STORE_SITEMAP_REVALIDATE_SECONDS;
@@ -48,8 +49,6 @@ const getCachedSitemapProducts = unstable_cache(
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
 
-  const [categories, products] = await Promise.all([getCachedSitemapCategories(), getCachedSitemapProducts()]);
-
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: siteUrl,
@@ -65,21 +64,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const categoryRoutes: MetadataRoute.Sitemap = categories.map((category) => ({
-    url: category.parent?.slug
-      ? `${siteUrl}/category/${category.parent.slug}/${category.slug}`
-      : `${siteUrl}/category/${category.slug}`,
-    lastModified: category.updatedAt,
-    changeFrequency: "weekly",
-    priority: category.parentId ? 0.7 : 0.8,
-  }));
+  try {
+    const [categories, products] = await Promise.all([getCachedSitemapCategories(), getCachedSitemapProducts()]);
 
-  const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({
-    url: `${siteUrl}/product/${product.slug}`,
-    lastModified: product.updatedAt,
-    changeFrequency: "daily",
-    priority: 0.9,
-  }));
+    const categoryRoutes: MetadataRoute.Sitemap = categories.map((category) => ({
+      url: category.parent?.slug
+        ? `${siteUrl}/category/${category.parent.slug}/${category.slug}`
+        : `${siteUrl}/category/${category.slug}`,
+      lastModified: category.updatedAt,
+      changeFrequency: "weekly",
+      priority: category.parentId ? 0.7 : 0.8,
+    }));
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes];
+    const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({
+      url: `${siteUrl}/product/${product.slug}`,
+      lastModified: product.updatedAt,
+      changeFrequency: "daily",
+      priority: 0.9,
+    }));
+
+    return [...staticRoutes, ...categoryRoutes, ...productRoutes];
+  } catch (error) {
+    if (isStorefrontConnectionError(error)) {
+      logStorefrontFallback("sitemap", error);
+      return staticRoutes;
+    }
+
+    throw error;
+  }
 }

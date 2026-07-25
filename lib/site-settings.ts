@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
+import { isStorefrontConnectionError, logStorefrontFallback } from "./storefront-db";
 import { STORE_CACHE_TAGS, STORE_CONFIG_REVALIDATE_SECONDS } from "./storefront-cache";
 
 export const SITE_SETTINGS_ID = "site";
@@ -332,7 +333,16 @@ const getCachedSiteSettingsRecord = unstable_cache(
 );
 
 export async function getSiteSettings(): Promise<SiteSettings> {
-  const settings = await getCachedSiteSettingsRecord();
+  try {
+    const settings = await getCachedSiteSettingsRecord();
 
-  return mergeSiteSettings(settings);
+    return mergeSiteSettings(settings);
+  } catch (error) {
+    if (isStorefrontConnectionError(error)) {
+      logStorefrontFallback("site settings", error);
+      return DEFAULT_SITE_SETTINGS;
+    }
+
+    throw error;
+  }
 }

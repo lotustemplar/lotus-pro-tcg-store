@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
 import { getDisplayProductName } from "./product-display";
+import { isStorefrontConnectionError, logStorefrontFallback } from "./storefront-db";
 import {
   STORE_CACHE_TAGS,
   STORE_CATALOG_REVALIDATE_SECONDS,
@@ -147,19 +148,28 @@ export function toCardProps(p: ProductCardData) {
 }
 
 export async function getFeaturedProducts(): Promise<ProductCardData[]> {
-  return unstable_cache(
-    async () =>
-      prisma.product.findMany({
-        where: { featuredOnHome: true, isActive: true, quantity: { gt: 0 } },
-        orderBy: { featuredOrder: "asc" },
-        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-      }),
-    ["featured-products"],
-    {
-      revalidate: STORE_CATALOG_REVALIDATE_SECONDS,
-      tags: [STORE_CACHE_TAGS.products],
-    },
-  )();
+  try {
+    return await unstable_cache(
+      async () =>
+        prisma.product.findMany({
+          where: { featuredOnHome: true, isActive: true, quantity: { gt: 0 } },
+          orderBy: { featuredOrder: "asc" },
+          include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+        }),
+      ["featured-products"],
+      {
+        revalidate: STORE_CATALOG_REVALIDATE_SECONDS,
+        tags: [STORE_CACHE_TAGS.products],
+      },
+    )();
+  } catch (error) {
+    if (isStorefrontConnectionError(error)) {
+      logStorefrontFallback("featured products", error);
+      return [];
+    }
+
+    throw error;
+  }
 }
 
 export async function searchProducts(q: string, limit = 24): Promise<ProductCardData[]> {
@@ -190,21 +200,14 @@ export async function searchProducts(q: string, limit = 24): Promise<ProductCard
 }
 
 export async function getHomeCategoryPreviews(limit = 5): Promise<HomeCategoryPreview[]> {
-  const categories = await unstable_cache(
-    async () =>
-      prisma.category.findMany({
-        where: { parentId: null },
-        orderBy: { sortOrder: "asc" },
-        take: limit,
-        include: {
-          products: {
-            where: { isActive: true },
-            orderBy: [{ featuredOnHome: "desc" }, { createdAt: "desc" }],
-            take: 1,
-            include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-          },
-          children: {
+  const categories = await (async () => {
+    try {
+      return await unstable_cache(
+        async () =>
+          prisma.category.findMany({
+            where: { parentId: null },
             orderBy: { sortOrder: "asc" },
+            take: limit,
             include: {
               products: {
                 where: { isActive: true },
@@ -212,16 +215,34 @@ export async function getHomeCategoryPreviews(limit = 5): Promise<HomeCategoryPr
                 take: 1,
                 include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
               },
+              children: {
+                orderBy: { sortOrder: "asc" },
+                include: {
+                  products: {
+                    where: { isActive: true },
+                    orderBy: [{ featuredOnHome: "desc" }, { createdAt: "desc" }],
+                    take: 1,
+                    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+                  },
+                },
+              },
             },
-          },
+          }),
+        ["home-category-previews", String(limit)],
+        {
+          revalidate: STORE_CATALOG_REVALIDATE_SECONDS,
+          tags: [STORE_CACHE_TAGS.categories, STORE_CACHE_TAGS.products],
         },
-      }),
-    ["home-category-previews", String(limit)],
-    {
-      revalidate: STORE_CATALOG_REVALIDATE_SECONDS,
-      tags: [STORE_CACHE_TAGS.categories, STORE_CACHE_TAGS.products],
-    },
-  )();
+      )();
+    } catch (error) {
+      if (isStorefrontConnectionError(error)) {
+        logStorefrontFallback("home category previews", error);
+        return [];
+      }
+
+      throw error;
+    }
+  })();
 
   return categories.map((category) => {
     const directImage = category.products[0]?.images[0]?.url ?? null;

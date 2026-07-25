@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
+import { isStorefrontConnectionError, logStorefrontFallback } from "./storefront-db";
 import { STORE_CACHE_TAGS, STORE_CONFIG_REVALIDATE_SECONDS } from "./storefront-cache";
 
 export type NavCategory = {
@@ -31,12 +32,21 @@ const getCachedTopCategories = unstable_cache(
 );
 
 export async function getNavCategories(): Promise<NavCategory[]> {
-  const tops = await getCachedTopCategories();
+  try {
+    const tops = await getCachedTopCategories();
 
-  return tops.map((t: TopCategoryRow) => ({
-    name: t.name,
-    slug: t.slug,
-    navStyle: t.navStyle,
-    subs: t.children.map((c: { name: string; slug: string }) => ({ name: c.name, slug: c.slug })),
-  }));
+    return tops.map((t: TopCategoryRow) => ({
+      name: t.name,
+      slug: t.slug,
+      navStyle: t.navStyle,
+      subs: t.children.map((c: { name: string; slug: string }) => ({ name: c.name, slug: c.slug })),
+    }));
+  } catch (error) {
+    if (isStorefrontConnectionError(error)) {
+      logStorefrontFallback("navigation", error);
+      return [];
+    }
+
+    throw error;
+  }
 }
