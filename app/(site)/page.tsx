@@ -105,9 +105,12 @@ export default async function HomePage() {
     getSiteSettings(),
     getHomeCategoryPreviews(5),
   ]);
+  const inStockFeaturedProducts = featured.filter((product) => product.quantity > 0);
   const exclusiveFeaturedProduct =
-    featured.find((product) => isExclusiveSaleFeaturedOrder(product.featuredOrder)) ?? null;
-  const regularFeaturedProducts = featured.filter((product) => product.id !== exclusiveFeaturedProduct?.id);
+    inStockFeaturedProducts.find((product) => isExclusiveSaleFeaturedOrder(product.featuredOrder)) ?? null;
+  const regularFeaturedProducts = inStockFeaturedProducts.filter(
+    (product) => product.id !== exclusiveFeaturedProduct?.id,
+  );
   const rotatingHeroProducts = regularFeaturedProducts;
 
   const carouselProducts = regularFeaturedProducts.map(toCardProps);
@@ -119,7 +122,7 @@ export default async function HomePage() {
         <div className="relative mx-auto max-w-[1500px] px-0 sm:px-4 sm:py-0">
           <HeroBannerCarousel slides={settings.heroSlides} brandName={settings.brandName} />
 
-          {featured.length > 0 ? (
+          {inStockFeaturedProducts.length > 0 ? (
             <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10 hidden lg:flex lg:justify-end xl:inset-x-6 xl:bottom-6">
               <div className="hot-products-card pointer-events-auto w-full max-w-[430px] rounded-[28px] border border-red-300/45 bg-[linear-gradient(180deg,rgba(20,9,8,0.78),rgba(7,10,18,0.96))] p-4 backdrop-blur-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
@@ -145,7 +148,7 @@ export default async function HomePage() {
           ) : null}
         </div>
 
-        {featured.length > 0 ? (
+        {inStockFeaturedProducts.length > 0 ? (
           <div className="relative z-10 -mt-14 px-3 pb-3 sm:hidden">
             <MobileHeroFeaturedWidget
               exclusiveProduct={exclusiveFeaturedProduct}
