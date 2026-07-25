@@ -107,9 +107,10 @@ export default async function HomePage() {
   ]);
   const exclusiveFeaturedProduct =
     featured.find((product) => isExclusiveSaleFeaturedOrder(product.featuredOrder)) ?? null;
-  const rotatingHeroProducts = featured.filter((product) => product.id !== exclusiveFeaturedProduct?.id);
+  const regularFeaturedProducts = featured.filter((product) => product.id !== exclusiveFeaturedProduct?.id);
+  const rotatingHeroProducts = regularFeaturedProducts;
 
-  const carouselProducts = featured.map(toCardProps);
+  const carouselProducts = regularFeaturedProducts.map(toCardProps);
   const mobileCategoryPreviews = categoryPreviews.slice(0, 4);
 
   return (
@@ -213,13 +214,21 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <div className="hidden xl:block">
-          <RotatingFeaturedShelf products={featured} />
-        </div>
+        {regularFeaturedProducts.length > 0 ? (
+          <>
+            <div className="hidden xl:block">
+              <RotatingFeaturedShelf products={regularFeaturedProducts} />
+            </div>
 
-        <div className="xl:hidden">
-          <Carousel products={carouselProducts} featuredStockOverlay />
-        </div>
+            <div className="xl:hidden">
+              <Carousel products={carouselProducts} featuredStockOverlay />
+            </div>
+          </>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-white/12 bg-white/[0.02] px-5 py-8 text-center text-gray-400">
+            Your featured carousel is currently empty because the only featured product is pinned in the exclusive hero slot.
+          </div>
+        )}
       </section>
     </div>
   );
