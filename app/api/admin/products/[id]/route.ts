@@ -113,6 +113,14 @@ function toAdminProductPayload(product: {
   };
 }
 
+const ORDER_LINKED_ARCHIVE_DATA = {
+  isActive: false,
+  featuredOnHome: false,
+  featuredOrder: 0,
+  autoUpdatePrice: false,
+  quantity: 0,
+} as const;
+
 const inlineProductSchema = z
   .object({
     name: z.string().min(1).optional(),
@@ -365,12 +373,55 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   });
   if (!existing) return NextResponse.json({ error: "Product not found." }, { status: 404 });
 
-  await prisma.product.delete({ where: { id: params.id } });
-  revalidateCatalogCache();
-  await submitIndexNowUrls([
-    getHomepageUrl(),
-    getProductUrl(existing.slug),
-    getCategoryUrl(existing.category),
-  ]);
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.product.delete({ where: { id: params.id } });
+    revalidateCatalogCache();
+    await submitIndexNowUrls([
+      getHomepageUrl(),
+      getProductUrl(existing.slug),
+      getCategoryUrl(existing.category),
+    ]);
+    return NextResponse.json({ ok: true, deleted: true });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      const archived = await prisma.product.update({
+        where: { id: params.id },
+        data: ORDER_LINKED_ARCHIVE_DATA,
+        select: {
+          id: true,
+          name: true,
+          priceCents: true,
+          sourceMarketplace: true,
+          sourceSetName: true,
+          sourceProductType: true,
+          sourcePriceCents: true,
+          autoUpdatePrice: true,
+          lastSyncedAt: true,
+          lastSyncError: true,
+          quantity: true,
+          featuredOnHome: true,
+          featuredOrder: true,
+          isActive: true,
+          categoryId: true,
+        },
+      });
+
+      revalidateCatalogCache();
+      await submitIndexNowUrls([
+        getHomepageUrl(),
+        getProductUrl(existing.slug),
+        getCategoryUrl(existing.category),
+      ]);
+
+      return NextResponse.json({
+        ok: true,
+        archived: true,
+        message:
+          "This product has past orders, so it was archived instead of being permanently deleted.",
+        product: toAdminProductPayload(archived),
+      });
+    }
+
+    return NextResponse.json({ error: "Failed to delete product." }, { status: 500 });
+  }
 }

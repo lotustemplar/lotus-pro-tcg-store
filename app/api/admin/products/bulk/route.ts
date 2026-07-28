@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { submitFullSiteToIndexNow } from "@/lib/indexnow";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 const productIdsSchema = z.array(z.string().min(1)).min(1);
@@ -48,10 +49,66 @@ export async function POST(req: NextRequest) {
 
   switch (parsed.data.action) {
     case "delete": {
-      const result = await prisma.product.deleteMany({
-        where: { id: { in: parsed.data.productIds } },
+      const linkedOrderItems = await prisma.orderItem.findMany({
+        where: { productId: { in: parsed.data.productIds } },
+        select: { productId: true },
+        distinct: ["productId"],
       });
-      count = result.count;
+      const linkedIdSet = new Set(linkedOrderItems.map((item) => item.productId));
+      const deletableIds = parsed.data.productIds.filter((id) => !linkedIdSet.has(id));
+      const archivedIds = parsed.data.productIds.filter((id) => linkedIdSet.has(id));
+
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const deleted =
+            deletableIds.length > 0
+              ? await tx.product.deleteMany({
+                  where: { id: { in: deletableIds } },
+                })
+              : { count: 0 };
+
+          if (archivedIds.length > 0) {
+            await tx.product.updateMany({
+              where: { id: { in: archivedIds } },
+              data: {
+                isActive: false,
+                featuredOnHome: false,
+                featuredOrder: 0,
+                autoUpdatePrice: false,
+                quantity: 0,
+              },
+            });
+          }
+
+          return { deletedCount: deleted.count, archivedIds };
+        });
+
+        revalidateCatalogCache();
+        await submitFullSiteToIndexNow();
+
+        return NextResponse.json({
+          ok: true,
+          count: result.deletedCount,
+          deletedIds: deletableIds,
+          archivedIds: result.archivedIds,
+          message:
+            result.archivedIds.length > 0
+              ? `Deleted ${result.deletedCount} product(s). Archived ${result.archivedIds.length} product(s) that are tied to past orders.`
+              : undefined,
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+          return NextResponse.json(
+            {
+              error:
+                "One or more selected products are tied to past orders and cannot be permanently deleted.",
+            },
+            { status: 409 },
+          );
+        }
+
+        return NextResponse.json({ error: "Failed to delete selected products." }, { status: 500 });
+      }
       break;
     }
     case "setActive": {

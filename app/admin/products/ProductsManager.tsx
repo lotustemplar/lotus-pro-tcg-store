@@ -41,6 +41,18 @@ type ProductUpdateResponse = {
   ok: boolean;
   product?: AdminProduct;
   error?: string;
+  archived?: boolean;
+  deleted?: boolean;
+  message?: string;
+};
+
+type BulkActionResponse = {
+  ok: boolean;
+  count?: number;
+  deletedIds?: string[];
+  archivedIds?: string[];
+  error?: string;
+  message?: string;
 };
 
 type ProductsManagerProps = {
@@ -356,17 +368,34 @@ export function ProductsManager({
     setSavingIds((current) => Array.from(new Set([...current, id])));
 
     const response = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
+    const data = (await response.json().catch(() => ({}))) as ProductUpdateResponse;
+
     if (!response.ok) {
-      setMessage({ type: "error", text: `Failed to delete ${product.name}.` });
+      setMessage({
+        type: "error",
+        text: typeof data.error === "string" ? data.error : `Failed to delete ${product.name}.`,
+      });
       setSavingIds((current) => current.filter((value) => value !== id));
       return;
     }
 
-    setProducts((current) => current.filter((entry) => entry.id !== id));
-    setSavedProducts((current) => current.filter((entry) => entry.id !== id));
+    if (data.archived && data.product) {
+      setProducts((current) => current.map((entry) => (entry.id === id ? { ...data.product! } : entry)));
+      setSavedProducts((current) => current.map((entry) => (entry.id === id ? { ...data.product! } : entry)));
+      setMessage({
+        type: "success",
+        text:
+          data.message ??
+          `${product.name} has past orders, so it was archived instead of being permanently deleted.`,
+      });
+    } else {
+      setProducts((current) => current.filter((entry) => entry.id !== id));
+      setSavedProducts((current) => current.filter((entry) => entry.id !== id));
+      setMessage({ type: "success", text: data.message ?? `Deleted ${product.name}.` });
+    }
+
     setSelectedIds((current) => current.filter((value) => value !== id));
     setSavingIds((current) => current.filter((value) => value !== id));
-    setMessage({ type: "success", text: `Deleted ${product.name}.` });
   }
 
   async function runBulkAction(payload: Record<string, unknown>, successMessage: string) {
@@ -384,8 +413,9 @@ export function ProductsManager({
       }),
     });
 
+    const data = (await response.json().catch(() => ({}))) as BulkActionResponse;
+
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
       setMessage({
         type: "error",
         text: typeof data.error === "string" ? data.error : "Bulk action failed.",
@@ -395,9 +425,41 @@ export function ProductsManager({
     }
 
     if (payload.action === "delete") {
-      const selectedSet = new Set(selectedIds);
-      setProducts((current) => current.filter((entry) => !selectedSet.has(entry.id)));
-      setSavedProducts((current) => current.filter((entry) => !selectedSet.has(entry.id)));
+      const deletedIdSet = new Set(data.deletedIds ?? selectedIds);
+      const archivedIdSet = new Set(data.archivedIds ?? []);
+
+      setProducts((current) =>
+        current
+          .filter((entry) => !deletedIdSet.has(entry.id))
+          .map((entry) =>
+            archivedIdSet.has(entry.id)
+              ? {
+                  ...entry,
+                  isActive: false,
+                  featuredOnHome: false,
+                  featuredOrder: 0,
+                  autoUpdatePrice: false,
+                  quantity: 0,
+                }
+              : entry,
+          ),
+      );
+      setSavedProducts((current) =>
+        current
+          .filter((entry) => !deletedIdSet.has(entry.id))
+          .map((entry) =>
+            archivedIdSet.has(entry.id)
+              ? {
+                  ...entry,
+                  isActive: false,
+                  featuredOnHome: false,
+                  featuredOrder: 0,
+                  autoUpdatePrice: false,
+                  quantity: 0,
+                }
+              : entry,
+          ),
+      );
     } else if (payload.action === "setActive") {
       const value = Boolean(payload.value);
       setProducts((current) =>
@@ -442,7 +504,7 @@ export function ProductsManager({
 
     setSelectedIds([]);
     setBulkBusy(false);
-    setMessage({ type: "success", text: successMessage });
+    setMessage({ type: "success", text: data.message ?? successMessage });
   }
 
   async function syncNow() {

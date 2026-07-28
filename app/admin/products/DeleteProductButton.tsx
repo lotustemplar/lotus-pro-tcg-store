@@ -14,8 +14,15 @@ export function DeleteProductButton({ id, name }: { id: string; name: string }) 
         if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
         setBusy(true);
         const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
-        if (res.ok) router.refresh();
-        else alert("Failed to delete product.");
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          if (typeof data.message === "string" && data.message.trim().length > 0) {
+            alert(data.message);
+          }
+          router.refresh();
+        } else {
+          alert(typeof data.error === "string" ? data.error : "Failed to delete product.");
+        }
         setBusy(false);
       }}
       className="text-red-400 hover:underline disabled:opacity-50"
