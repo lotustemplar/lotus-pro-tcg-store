@@ -35,6 +35,13 @@ const bulkSchema = z.discriminatedUnion("action", [
   }),
 ]);
 
+function isOrderHistoryDeleteBlock(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2003" || error.code === "P2014")
+  );
+}
+
 export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -97,7 +104,7 @@ export async function POST(req: NextRequest) {
               : undefined,
         });
       } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        if (isOrderHistoryDeleteBlock(error)) {
           return NextResponse.json(
             {
               error:
@@ -106,6 +113,12 @@ export async function POST(req: NextRequest) {
             { status: 409 },
           );
         }
+
+        console.error("Bulk product delete failed", {
+          productIds: parsed.data.productIds,
+          code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined,
+          message: error instanceof Error ? error.message : String(error),
+        });
 
         return NextResponse.json({ error: "Failed to delete selected products." }, { status: 500 });
       }

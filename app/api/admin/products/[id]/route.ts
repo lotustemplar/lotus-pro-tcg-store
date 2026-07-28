@@ -121,6 +121,13 @@ const ORDER_LINKED_ARCHIVE_DATA = {
   quantity: 0,
 } as const;
 
+function isOrderHistoryDeleteBlock(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2003" || error.code === "P2014")
+  );
+}
+
 const inlineProductSchema = z
   .object({
     name: z.string().min(1).optional(),
@@ -383,7 +390,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     ]);
     return NextResponse.json({ ok: true, deleted: true });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+    if (isOrderHistoryDeleteBlock(error)) {
       const archived = await prisma.product.update({
         where: { id: params.id },
         data: ORDER_LINKED_ARCHIVE_DATA,
@@ -421,6 +428,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
         product: toAdminProductPayload(archived),
       });
     }
+
+    console.error("Product delete failed", {
+      productId: params.id,
+      code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined,
+      message: error instanceof Error ? error.message : String(error),
+    });
 
     return NextResponse.json({ error: "Failed to delete product." }, { status: 500 });
   }
