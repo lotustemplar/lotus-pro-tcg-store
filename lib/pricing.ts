@@ -1,7 +1,15 @@
 export const TCGPLAYER_PRICE_DISCOUNT = 0.05;
+export const TCGPLAYER_MAX_DISCOUNT_CENTS = 2500;
+
+export function getDiscountAmountCents(sourcePriceCents: number) {
+  return Math.min(
+    TCGPLAYER_MAX_DISCOUNT_CENTS,
+    Math.max(0, Math.round(sourcePriceCents * TCGPLAYER_PRICE_DISCOUNT)),
+  );
+}
 
 export function getDiscountedStorePriceCents(sourcePriceCents: number) {
-  return Math.max(0, Math.round(sourcePriceCents * (1 - TCGPLAYER_PRICE_DISCOUNT)));
+  return Math.max(0, sourcePriceCents - getDiscountAmountCents(sourcePriceCents));
 }
 
 export function applyTrackedTcgplayerPricing({

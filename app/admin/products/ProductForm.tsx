@@ -538,7 +538,7 @@ export function ProductForm({
               <div className="mt-1 space-y-1 text-xs text-gray-500">
                 <p>TCGplayer live price with shipping: {formatCents(values.sourcePriceCents)}</p>
                 <p>
-                  Auto Price keeps your storefront at 5% below TCGplayer and sets Compare-at to the TCGplayer price.
+                  Auto Price keeps your storefront 5% below TCGplayer, capped at $25 off, and sets Compare-at to the TCGplayer price.
                 </p>
               </div>
             )}
