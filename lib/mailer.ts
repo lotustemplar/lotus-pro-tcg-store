@@ -47,11 +47,13 @@ export async function sendMail({
   subject,
   html,
   text,
+  replyTo,
 }: {
   to: string;
   subject: string;
   html: string;
   text: string;
+  replyTo?: string;
 }) {
   if (!hasSmtpConfig()) {
     throw new Error("SMTP email is not configured yet. Add SMTP_* environment variables first.");
@@ -62,6 +64,7 @@ export async function sendMail({
   await transporter.sendMail({
     from: getMailerFrom(),
     to,
+    ...(replyTo ? { replyTo } : {}),
     subject,
     html,
     text,
