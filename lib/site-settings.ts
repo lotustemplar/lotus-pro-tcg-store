@@ -18,6 +18,27 @@ const CURRENT_FREE_SHIPPING_COPY = {
   footerShippingLineHighlight: "Free shipping on orders over $75.",
   footerBottomPromoRight: "Free shipping over $75",
 } as const;
+const RECOVERY_SITE_BRANDING = {
+  logoWideUrl: "/branding/recovery/logo-wide.webp",
+  logoSquareUrl: "/branding/recovery/logo-square.webp",
+  heroBannerUrl: "/branding/recovery/hero-banner.png",
+  heroSlides: [
+    {
+      id: "legacy-slide-1",
+      name: "Hero Banner",
+      imageUrl: "/branding/recovery/hero-slide-1.webp",
+      buttonLabel: "Shop Magic",
+      buttonHref: "/category/magic-the-gathering",
+    },
+  ],
+  categoryBackgrounds: {
+    pokemon: "/branding/recovery/category-pokemon.webp",
+    "one-piece": "/branding/recovery/category-one-piece.webp",
+    "magic-the-gathering": "/branding/recovery/category-magic-the-gathering.webp",
+    riftbound: "/branding/recovery/category-riftbound.webp",
+    "weiss-schwarz": "/branding/recovery/category-weiss-schwarz.webp",
+  },
+} as const;
 
 export type HeroSlide = {
   id: string;
@@ -205,70 +226,104 @@ function resolveCategoryBackgrounds(record: SiteSettingsRecord): CategoryBackgro
   );
 }
 
+function hasCustomBrandAsset(
+  value: string | null | undefined,
+  defaultValue: string,
+) {
+  const trimmed = optionalValue(value);
+  return !!trimmed && trimmed !== defaultValue;
+}
+
+function applyRecoveredBranding(record: SiteSettingsRecord): SiteSettingsRecord {
+  const next = record ? { ...record } : {};
+  const needsBrandRecovery =
+    !hasCustomBrandAsset(next.logoWideUrl, DEFAULT_SITE_SETTINGS.logoWideUrl) &&
+    !hasCustomBrandAsset(next.logoSquareUrl, DEFAULT_SITE_SETTINGS.logoSquareUrl) &&
+    resolveHeroSlides(next).length === 0;
+
+  if (!needsBrandRecovery) {
+    return next;
+  }
+
+  next.logoWideUrl = RECOVERY_SITE_BRANDING.logoWideUrl;
+  next.logoSquareUrl = RECOVERY_SITE_BRANDING.logoSquareUrl;
+  next.heroBannerUrl = RECOVERY_SITE_BRANDING.heroBannerUrl;
+  next.heroSlides = RECOVERY_SITE_BRANDING.heroSlides.map((slide) => ({ ...slide }));
+  next.heroSlidesJson = JSON.stringify(RECOVERY_SITE_BRANDING.heroSlides);
+
+  if (Object.values(resolveCategoryBackgrounds(next)).every((value) => !value)) {
+    next.categoryBackgrounds = { ...RECOVERY_SITE_BRANDING.categoryBackgrounds };
+    next.categoryBackgroundsJson = JSON.stringify(RECOVERY_SITE_BRANDING.categoryBackgrounds);
+  }
+
+  return next;
+}
+
 export function mergeSiteSettings(record: SiteSettingsRecord): SiteSettings {
+  const resolvedRecord = applyRecoveredBranding(record);
   const merged: SiteSettings = {
-    brandName: requiredValue(record?.brandName, DEFAULT_SITE_SETTINGS.brandName),
-    logoWideUrl: requiredValue(record?.logoWideUrl, DEFAULT_SITE_SETTINGS.logoWideUrl),
-    logoSquareUrl: requiredValue(record?.logoSquareUrl, DEFAULT_SITE_SETTINGS.logoSquareUrl),
-    heroBannerUrl: optionalValue(record?.heroBannerUrl),
-    heroSlides: resolveHeroSlides(record),
-    heroEyebrow: requiredValue(record?.heroEyebrow, DEFAULT_SITE_SETTINGS.heroEyebrow),
-    heroTitle: requiredValue(record?.heroTitle, DEFAULT_SITE_SETTINGS.heroTitle),
-    heroDescription: requiredValue(record?.heroDescription, DEFAULT_SITE_SETTINGS.heroDescription),
-    heroPrimaryLabel: requiredValue(record?.heroPrimaryLabel, DEFAULT_SITE_SETTINGS.heroPrimaryLabel),
-    heroPrimaryHref: requiredValue(record?.heroPrimaryHref, DEFAULT_SITE_SETTINGS.heroPrimaryHref),
+    brandName: requiredValue(resolvedRecord?.brandName, DEFAULT_SITE_SETTINGS.brandName),
+    logoWideUrl: requiredValue(resolvedRecord?.logoWideUrl, DEFAULT_SITE_SETTINGS.logoWideUrl),
+    logoSquareUrl: requiredValue(resolvedRecord?.logoSquareUrl, DEFAULT_SITE_SETTINGS.logoSquareUrl),
+    heroBannerUrl: optionalValue(resolvedRecord?.heroBannerUrl),
+    heroSlides: resolveHeroSlides(resolvedRecord),
+    heroEyebrow: requiredValue(resolvedRecord?.heroEyebrow, DEFAULT_SITE_SETTINGS.heroEyebrow),
+    heroTitle: requiredValue(resolvedRecord?.heroTitle, DEFAULT_SITE_SETTINGS.heroTitle),
+    heroDescription: requiredValue(resolvedRecord?.heroDescription, DEFAULT_SITE_SETTINGS.heroDescription),
+    heroPrimaryLabel: requiredValue(resolvedRecord?.heroPrimaryLabel, DEFAULT_SITE_SETTINGS.heroPrimaryLabel),
+    heroPrimaryHref: requiredValue(resolvedRecord?.heroPrimaryHref, DEFAULT_SITE_SETTINGS.heroPrimaryHref),
     heroSecondaryLabel: requiredValue(
-      record?.heroSecondaryLabel,
+      resolvedRecord?.heroSecondaryLabel,
       DEFAULT_SITE_SETTINGS.heroSecondaryLabel,
     ),
     heroSecondaryHref: requiredValue(
-      record?.heroSecondaryHref,
+      resolvedRecord?.heroSecondaryHref,
       DEFAULT_SITE_SETTINGS.heroSecondaryHref,
     ),
-    categoryBackgrounds: resolveCategoryBackgrounds(record),
+    categoryBackgrounds: resolveCategoryBackgrounds(resolvedRecord),
     featuredSectionTitle: requiredValue(
-      record?.featuredSectionTitle,
+      resolvedRecord?.featuredSectionTitle,
       DEFAULT_SITE_SETTINGS.featuredSectionTitle,
     ),
-    siteMetaTitle: requiredValue(record?.siteMetaTitle, DEFAULT_SITE_SETTINGS.siteMetaTitle),
+    siteMetaTitle: requiredValue(resolvedRecord?.siteMetaTitle, DEFAULT_SITE_SETTINGS.siteMetaTitle),
     siteMetaDescription: requiredValue(
-      record?.siteMetaDescription,
+      resolvedRecord?.siteMetaDescription,
       DEFAULT_SITE_SETTINGS.siteMetaDescription,
     ),
-    footerDescription: requiredValue(record?.footerDescription, DEFAULT_SITE_SETTINGS.footerDescription),
-    footerShopHeading: requiredValue(record?.footerShopHeading, DEFAULT_SITE_SETTINGS.footerShopHeading),
+    footerDescription: requiredValue(resolvedRecord?.footerDescription, DEFAULT_SITE_SETTINGS.footerDescription),
+    footerShopHeading: requiredValue(resolvedRecord?.footerShopHeading, DEFAULT_SITE_SETTINGS.footerShopHeading),
     footerSupportHeading: requiredValue(
-      record?.footerSupportHeading,
+      resolvedRecord?.footerSupportHeading,
       DEFAULT_SITE_SETTINGS.footerSupportHeading,
     ),
     footerShippingHeading: requiredValue(
-      record?.footerShippingHeading,
+      resolvedRecord?.footerShippingHeading,
       DEFAULT_SITE_SETTINGS.footerShippingHeading,
     ),
-    footerContactLabel: requiredValue(record?.footerContactLabel, DEFAULT_SITE_SETTINGS.footerContactLabel),
-    footerContactHref: requiredValue(record?.footerContactHref, DEFAULT_SITE_SETTINGS.footerContactHref),
+    footerContactLabel: requiredValue(resolvedRecord?.footerContactLabel, DEFAULT_SITE_SETTINGS.footerContactLabel),
+    footerContactHref: requiredValue(resolvedRecord?.footerContactHref, DEFAULT_SITE_SETTINGS.footerContactHref),
     footerShippingLabel: requiredValue(
-      record?.footerShippingLabel,
+      resolvedRecord?.footerShippingLabel,
       DEFAULT_SITE_SETTINGS.footerShippingLabel,
     ),
-    footerShippingHref: requiredValue(record?.footerShippingHref, DEFAULT_SITE_SETTINGS.footerShippingHref),
-    footerFaqLabel: requiredValue(record?.footerFaqLabel, DEFAULT_SITE_SETTINGS.footerFaqLabel),
-    footerFaqHref: requiredValue(record?.footerFaqHref, DEFAULT_SITE_SETTINGS.footerFaqHref),
+    footerShippingHref: requiredValue(resolvedRecord?.footerShippingHref, DEFAULT_SITE_SETTINGS.footerShippingHref),
+    footerFaqLabel: requiredValue(resolvedRecord?.footerFaqLabel, DEFAULT_SITE_SETTINGS.footerFaqLabel),
+    footerFaqHref: requiredValue(resolvedRecord?.footerFaqHref, DEFAULT_SITE_SETTINGS.footerFaqHref),
     footerShippingLinePrimary: requiredValue(
-      record?.footerShippingLinePrimary,
+      resolvedRecord?.footerShippingLinePrimary,
       DEFAULT_SITE_SETTINGS.footerShippingLinePrimary,
     ),
     footerShippingLineHighlight: requiredValue(
-      record?.footerShippingLineHighlight,
+      resolvedRecord?.footerShippingLineHighlight,
       DEFAULT_SITE_SETTINGS.footerShippingLineHighlight,
     ),
-    footerLegalText: requiredValue(record?.footerLegalText, DEFAULT_SITE_SETTINGS.footerLegalText),
+    footerLegalText: requiredValue(resolvedRecord?.footerLegalText, DEFAULT_SITE_SETTINGS.footerLegalText),
     footerBottomPromoLeft: requiredValue(
-      record?.footerBottomPromoLeft,
+      resolvedRecord?.footerBottomPromoLeft,
       DEFAULT_SITE_SETTINGS.footerBottomPromoLeft,
     ),
     footerBottomPromoRight: requiredValue(
-      record?.footerBottomPromoRight,
+      resolvedRecord?.footerBottomPromoRight,
       DEFAULT_SITE_SETTINGS.footerBottomPromoRight,
     ),
   };

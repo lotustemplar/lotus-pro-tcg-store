@@ -1,0 +1,21 @@
+{
+  "logoWideUrl": "/branding/recovery/logo-wide.webp",
+  "logoSquareUrl": "/branding/recovery/logo-square.webp",
+  "heroBannerUrl": "/branding/recovery/hero-banner.png",
+  "heroSlides": [
+    {
+      "id": "legacy-slide-1",
+      "name": "Hero Banner",
+      "imageUrl": "/branding/recovery/hero-slide-1.webp",
+      "buttonLabel": "Shop Magic",
+      "buttonHref": "/category/magic-the-gathering"
+    }
+  ],
+  "categoryBackgrounds": {
+    "pokemon": "/branding/recovery/category-pokemon.webp",
+    "one-piece": "/branding/recovery/category-one-piece.webp",
+    "magic-the-gathering": "/branding/recovery/category-magic-the-gathering.webp",
+    "riftbound": "/branding/recovery/category-riftbound.webp",
+    "weiss-schwarz": "/branding/recovery/category-weiss-schwarz.webp"
+  }
+}
