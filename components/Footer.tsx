@@ -95,7 +95,7 @@ export function Footer({
             <ul className="space-y-1 text-sm text-gray-400">
               <li><Link href="/about-us" className="hover:text-white">About Us</Link></li>
               <li><a href="#" className="hover:text-white">Patreon Access</a></li>
-              <li><a href="#" className="hover:text-white">Terms of Service</a></li>
+              <li><Link href="/returns" className="hover:text-white">Returns Policy</Link></li>
               <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
             </ul>
           </div>
