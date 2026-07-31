@@ -16,6 +16,7 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
 export const revalidate = STORE_CATALOG_REVALIDATE_SECONDS;
+export const dynamic = "force-dynamic";
 
 const FEATURE_STRIP = [
   {

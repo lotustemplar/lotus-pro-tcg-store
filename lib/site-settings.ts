@@ -395,7 +395,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   } catch (error) {
     if (isStorefrontConnectionError(error)) {
       logStorefrontFallback("site settings", error);
-      return DEFAULT_SITE_SETTINGS;
+      return mergeSiteSettings(DEFAULT_SITE_SETTINGS);
     }
 
     throw error;
