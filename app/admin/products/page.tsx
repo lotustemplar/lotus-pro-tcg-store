@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { getAllCategoriesWithParent } from "@/lib/admin";
+import { ARCHIVED_DELETED_PRODUCT_KEYWORD } from "@/lib/product-delete";
 import { getDisplayProductName } from "@/lib/product-display";
 import { ProductsManager } from "./ProductsManager";
 
@@ -80,12 +81,21 @@ export default async function AdminProductsPage({
     }));
 
   const requestedPage = normalizePage(searchParams?.page);
-  const totalProducts = await prisma.product.count();
+  const visibleProductsWhere = {
+    seoKeywords: {
+      not: ARCHIVED_DELETED_PRODUCT_KEYWORD,
+    },
+  } as const;
+
+  const totalProducts = await prisma.product.count({
+    where: visibleProductsWhere,
+  });
   const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
   const skip = (currentPage - 1) * PAGE_SIZE;
 
   const products = await prisma.product.findMany({
+    where: visibleProductsWhere,
     orderBy: { name: "asc" },
     skip,
     take: PAGE_SIZE,
@@ -114,6 +124,35 @@ export default async function AdminProductsPage({
           Showing {rangeStart}-{rangeEnd} of {totalProducts} products.
         </p>
       </div>
+
+      {totalProducts === 0 ? (
+        <div className="rounded-2xl border border-brand-500/25 bg-[linear-gradient(135deg,rgba(15,20,34,0.98),rgba(31,18,42,0.96))] p-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-200/85">
+            Catalog Ready
+          </p>
+          <h2 className="mt-2 font-display text-2xl font-medium text-white">
+            The product workspace is empty because this is the new Railway catalog.
+          </h2>
+          <p className="mt-3 max-w-[70ch] text-sm leading-6 text-gray-300">
+            You can start rebuilding immediately: add products one by one through TCGplayer imports, set hero
+            banners in Site Settings, and feature items on the homepage as they go live.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/admin/products/new"
+              className="rounded-lg bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-500"
+            >
+              Add Product
+            </Link>
+            <Link
+              href="/admin/settings"
+              className="rounded-lg border border-white/12 px-5 py-3 text-sm font-semibold text-gray-100 hover:border-brand-400/45 hover:text-white"
+            >
+              Update Branding
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <PaginationControls page={currentPage} totalPages={totalPages} />
 

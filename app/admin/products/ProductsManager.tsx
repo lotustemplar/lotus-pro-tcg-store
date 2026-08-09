@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { EXCLUSIVE_SALE_FEATURED_ORDER, isExclusiveSaleFeaturedOrder } from "@/lib/featured-home";
 import { formatCents } from "@/lib/format";
 
@@ -55,6 +54,43 @@ type BulkActionResponse = {
   message?: string;
 };
 
+type TcgplayerSyncResult = {
+  id: string;
+  name: string;
+  sourceSetName: string | null;
+  sourceProductType: string | null;
+  previousStorePriceCents: number;
+  nextStorePriceCents: number;
+  previousSourcePriceCents: number | null;
+  nextSourcePriceCents: number | null;
+  autoUpdatePrice: boolean;
+  storefrontUpdated: boolean;
+  sourceUpdated: boolean;
+  warningMessage: string | null;
+  errorMessage: string | null;
+  lastSyncedAt: string;
+};
+
+type TcgplayerSyncResponse = {
+  ok: boolean;
+  error?: string;
+  failed?: number;
+  scanned?: number;
+  results?: TcgplayerSyncResult[];
+  synced?: number;
+  updatedPrices?: number;
+  warnings?: number;
+};
+
+type SyncReport = {
+  failed: number;
+  scanned: number;
+  results: TcgplayerSyncResult[];
+  synced: number;
+  updatedPrices: number;
+  warnings: number;
+};
+
 type ProductsManagerProps = {
   topLevels: TopLevelCategory[];
   leafCategories: LeafCategory[];
@@ -90,12 +126,75 @@ function formatTimestamp(value: string | null) {
   return date.toLocaleString();
 }
 
+function getSyncDisplayName(result: TcgplayerSyncResult) {
+  if (!result.sourceSetName) return result.name;
+  if (result.name.toLowerCase().includes(result.sourceSetName.toLowerCase())) {
+    return result.name;
+  }
+
+  return `${result.sourceSetName} - ${result.name}`;
+}
+
+function getPriceChangePercent(previousCents: number, nextCents: number) {
+  if (previousCents <= 0 || previousCents === nextCents) return null;
+  return ((nextCents - previousCents) / previousCents) * 100;
+}
+
+function formatPercentChange(value: number | null) {
+  if (value == null) return "0.0%";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+function getSyncResultStatus(result: TcgplayerSyncResult) {
+  if (result.errorMessage) {
+    return {
+      className: "border-red-500/30 bg-red-950/40 text-red-200",
+      description: result.errorMessage,
+      label: "Failed",
+    };
+  }
+
+  if (result.warningMessage) {
+    return {
+      className: "border-amber-500/30 bg-amber-950/40 text-amber-200",
+      description: result.warningMessage,
+      label: "Manual Review",
+    };
+  }
+
+  if (result.storefrontUpdated) {
+    return {
+      className: "border-emerald-500/30 bg-emerald-950/40 text-emerald-200",
+      description: "Storefront price was updated automatically.",
+      label: "Store Updated",
+    };
+  }
+
+  if (result.sourceUpdated) {
+    return {
+      className: "border-brand-500/30 bg-brand-950/35 text-brand-200",
+      description: result.autoUpdatePrice
+        ? "Tracked source changed."
+        : "Tracked source changed, but the storefront is still locked to manual pricing.",
+      label: "Tracked Only",
+    };
+  }
+
+  return {
+    className: "border-white/10 bg-white/[0.03] text-gray-300",
+    description: result.autoUpdatePrice
+      ? "No storefront price change was needed."
+      : "Manual price lock kept the storefront unchanged.",
+    label: "No Change",
+  };
+}
+
 export function ProductsManager({
   topLevels,
   leafCategories,
   initialProducts,
 }: ProductsManagerProps) {
-  const router = useRouter();
   const [products, setProducts] = useState(() => cloneProducts(initialProducts));
   const [savedProducts, setSavedProducts] = useState(() => cloneProducts(initialProducts));
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -105,6 +204,7 @@ export function ProductsManager({
   const [message, setMessage] = useState<Message | null>(null);
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [syncReport, setSyncReport] = useState<SyncReport | null>(null);
   const [groupCategoryFilters, setGroupCategoryFilters] = useState<Record<string, string>>(() =>
     Object.fromEntries(topLevels.map((topLevel) => [topLevel.id, "all"])),
   );
@@ -132,6 +232,18 @@ export function ProductsManager({
   const dirtyIdSet = new Set(dirtyIds);
   const savingIdSet = new Set(savingIds);
   const selectedIdSet = new Set(selectedIds);
+  const syncReviewResults = [...(syncReport?.results ?? [])]
+    .filter((result) => result.storefrontUpdated || result.sourceUpdated || result.warningMessage || result.errorMessage)
+    .sort((left, right) => {
+      const leftPriority = left.errorMessage ? 0 : left.warningMessage ? 1 : left.storefrontUpdated ? 2 : 3;
+      const rightPriority = right.errorMessage ? 0 : right.warningMessage ? 1 : right.storefrontUpdated ? 2 : 3;
+
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority;
+      }
+
+      return getSyncDisplayName(left).localeCompare(getSyncDisplayName(right));
+    });
 
   const groupedProducts = topLevels.map((topLevel) => {
     const allItems = products
@@ -268,6 +380,37 @@ export function ProductsManager({
 
   function clearMessage() {
     setMessage(null);
+  }
+
+  function applySyncResults(results: TcgplayerSyncResult[]) {
+    if (results.length === 0) return;
+
+    const resultsById = new Map(results.map((result) => [result.id, result]));
+
+    const applyOne = (product: AdminProduct) => {
+      const result = resultsById.get(product.id);
+      if (!result) return product;
+
+      return {
+        ...product,
+        priceCents: result.nextStorePriceCents,
+        sourceSetName: result.sourceSetName,
+        sourceProductType: result.sourceProductType,
+        sourcePriceCents: result.nextSourcePriceCents,
+        lastSyncedAt: result.lastSyncedAt,
+        lastSyncError: result.errorMessage ?? result.warningMessage,
+      };
+    };
+
+    setProducts((current) => current.map(applyOne));
+    setSavedProducts((current) => current.map(applyOne));
+    setPriceDrafts((current) => {
+      const next = { ...current };
+      for (const result of results) {
+        delete next[result.id];
+      }
+      return next;
+    });
   }
 
   function categoriesForTopLevel(topLevelId: string) {
@@ -517,9 +660,10 @@ export function ProductsManager({
 
     clearMessage();
     setSyncingSourcePrices(true);
+    setSyncReport(null);
 
     const response = await fetch("/api/admin/products/sync-tcgplayer", { method: "POST" });
-    const data = await response.json().catch(() => ({}));
+    const data = (await response.json().catch(() => ({}))) as TcgplayerSyncResponse;
 
     if (!response.ok) {
       setMessage({
@@ -530,16 +674,22 @@ export function ProductsManager({
       return;
     }
 
+    const nextReport: SyncReport = {
+      failed: data.failed ?? 0,
+      scanned: data.scanned ?? 0,
+      results: data.results ?? [],
+      synced: data.synced ?? 0,
+      updatedPrices: data.updatedPrices ?? 0,
+      warnings: data.warnings ?? 0,
+    };
+
+    applySyncResults(nextReport.results);
+    setSyncReport(nextReport);
     setMessage({
       type: "success",
-      text: `Scanned ${data.scanned ?? 0} tracked product(s). Updated ${data.updatedPrices ?? 0} storefront price(s).${
-        (data.warnings ?? 0) > 0
-          ? ` Flagged ${data.warnings} warning(s): ${Array.isArray(data.warningProducts) && data.warningProducts.length > 0 ? data.warningProducts.join(", ") : "manual review required."}`
-          : ""
-      }`,
+      text: `Scanned ${nextReport.scanned} tracked product(s). Updated ${nextReport.updatedPrices} storefront price(s).${nextReport.warnings > 0 ? ` Flagged ${nextReport.warnings} warning(s).` : ""}${nextReport.failed > 0 ? ` Failed ${nextReport.failed} item(s).` : ""} Review the sync report below.`,
     });
     setSyncingSourcePrices(false);
-    router.refresh();
   }
 
   const bulkCategoryOptions = categoriesForTopLevel(bulkCategory.topLevelId);
@@ -590,6 +740,168 @@ export function ProductsManager({
         >
           {message.text}
         </p>
+      )}
+
+      {syncReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020611]/80 px-4 py-6 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-[#0b111d] shadow-[0_30px_120px_rgba(0,0,0,0.55)]">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-200/80">
+                  TCGplayer Sync Review
+                </p>
+                <h2 className="mt-2 font-display text-3xl font-semibold text-white">
+                  Review price changes and flagged products
+                </h2>
+                <p className="mt-2 text-sm text-gray-400">
+                  Anything marked for manual review includes the exact warning that caused the flag.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSyncReport(null)}
+                className="rounded-lg border border-white/12 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:border-brand-400/50 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="grid gap-3 border-b border-white/10 px-6 py-5 md:grid-cols-5">
+              {[
+                { label: "Scanned", value: syncReport.scanned },
+                { label: "Synced", value: syncReport.synced },
+                { label: "Storefront Updates", value: syncReport.updatedPrices },
+                { label: "Warnings", value: syncReport.warnings },
+                { label: "Failed", value: syncReport.failed },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">{item.label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="max-h-[58vh] overflow-auto px-6 py-5">
+              {syncReviewResults.length === 0 ? (
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 text-sm text-gray-300">
+                  No products required review and no tracked values changed on this run.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {syncReviewResults.map((result) => {
+                    const status = getSyncResultStatus(result);
+                    const percentChange = getPriceChangePercent(
+                      result.previousStorePriceCents,
+                      result.nextStorePriceCents,
+                    );
+                    const storeDeltaCents = result.nextStorePriceCents - result.previousStorePriceCents;
+                    const trackedDeltaCents =
+                      result.nextSourcePriceCents != null && result.previousSourcePriceCents != null
+                        ? result.nextSourcePriceCents - result.previousSourcePriceCents
+                        : null;
+
+                    return (
+                      <div
+                        key={`${result.id}-${result.lastSyncedAt}`}
+                        className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${status.className}`}>
+                                {status.label}
+                              </span>
+                              <span className="text-xs text-gray-500">{formatTimestamp(result.lastSyncedAt)}</span>
+                            </div>
+                            <h3 className="font-display text-2xl font-medium text-white">
+                              {getSyncDisplayName(result)}
+                            </h3>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400">
+                              {result.sourceSetName && <span>Set: {result.sourceSetName}</span>}
+                              {result.sourceProductType && <span>Type: {result.sourceProductType}</span>}
+                              {!result.autoUpdatePrice && (
+                                <span className="text-amber-300">Manual price lock was enabled</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-300">{status.description}</p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 lg:justify-end">
+                            <Link
+                              href={`/admin/products/${result.id}`}
+                              className="rounded-lg border border-brand-500 px-4 py-2 text-sm font-semibold text-brand-200 transition hover:bg-brand-500/10 hover:text-white"
+                            >
+                              Edit Product
+                            </Link>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                          <div className="rounded-2xl border border-white/8 bg-[#0a0f18] px-4 py-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Storefront Price</p>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                              <span className="text-gray-400">Was:</span>
+                              <span className="font-semibold text-white">{formatCents(result.previousStorePriceCents)}</span>
+                              <span className="text-gray-500">|</span>
+                              <span className="text-gray-400">Updated:</span>
+                              <span className="font-semibold text-white">{formatCents(result.nextStorePriceCents)}</span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                              <span className={storeDeltaCents > 0 ? "text-emerald-300" : storeDeltaCents < 0 ? "text-red-300" : "text-gray-400"}>
+                                {storeDeltaCents > 0 ? "Increase" : storeDeltaCents < 0 ? "Decrease" : "No change"}:
+                              </span>
+                              <span className={storeDeltaCents > 0 ? "text-emerald-300" : storeDeltaCents < 0 ? "text-red-300" : "text-gray-400"}>
+                                {storeDeltaCents === 0 ? formatCents(0) : `${storeDeltaCents > 0 ? "+" : "-"}${formatCents(Math.abs(storeDeltaCents))}`}
+                              </span>
+                              <span className="text-gray-500">|</span>
+                              <span className={storeDeltaCents > 0 ? "text-emerald-300" : storeDeltaCents < 0 ? "text-red-300" : "text-gray-400"}>
+                                {formatPercentChange(percentChange)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-white/8 bg-[#0a0f18] px-4 py-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Tracked TCGplayer Price</p>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                              <span className="text-gray-400">Was:</span>
+                              <span className="font-semibold text-white">
+                                {result.previousSourcePriceCents != null ? formatCents(result.previousSourcePriceCents) : "N/A"}
+                              </span>
+                              <span className="text-gray-500">|</span>
+                              <span className="text-gray-400">Updated:</span>
+                              <span className="font-semibold text-white">
+                                {result.nextSourcePriceCents != null ? formatCents(result.nextSourcePriceCents) : "N/A"}
+                              </span>
+                            </div>
+                            {trackedDeltaCents != null && (
+                              <div className="mt-2 text-sm">
+                                <span className={trackedDeltaCents > 0 ? "text-emerald-300" : trackedDeltaCents < 0 ? "text-red-300" : "text-gray-400"}>
+                                  {trackedDeltaCents > 0 ? "Tracked increase" : trackedDeltaCents < 0 ? "Tracked decrease" : "No tracked change"}:{" "}
+                                  {trackedDeltaCents === 0 ? formatCents(0) : `${trackedDeltaCents > 0 ? "+" : "-"}${formatCents(Math.abs(trackedDeltaCents))}`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="rounded-2xl border border-white/8 bg-[#0a0f18] px-4 py-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Review Notes</p>
+                            <p className="mt-2 text-sm leading-6 text-gray-300">
+                              {result.errorMessage ??
+                                result.warningMessage ??
+                                (result.autoUpdatePrice
+                                  ? "The storefront was allowed to follow the tracked TCGplayer price."
+                                  : "The tracked price refreshed, but the storefront stayed unchanged because manual pricing is locked.")}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="rounded-xl border border-border bg-bg-panel p-4">

@@ -68,6 +68,26 @@ export type TcgplayerImportPreview = {
   warningMessage: string | null;
 };
 
+export type TcgplayerTrackedSourceSnapshot = {
+  autoUpdatePrice: boolean;
+  compareAtCents: number;
+  description: string;
+  images: { url: string; altText: string }[];
+  name: string;
+  priceCents: number;
+  seoDescription: string;
+  seoTitle: string;
+  slug: string;
+  sourceImageUrl: string;
+  sourcePriceCents: number;
+  sourceProductId: number;
+  sourceProductLine: string;
+  sourceProductType: string;
+  sourceSetName: string;
+  sourceUrl: string;
+  warningMessage: string | null;
+};
+
 type TcgplayerListingsResponse = {
   results?: Array<{
     results?: Array<{
@@ -613,23 +633,62 @@ export function findSuggestedCategoryId(categories: CategoryRecord[], details: {
 }
 
 export async function importFromTcgplayerUrl(url: string, categories: CategoryRecord[]): Promise<TcgplayerImportPreview> {
-  const productId = extractTcgplayerProductId(url);
+  const snapshot = await refreshTrackedTcgplayerSource({
+    sourceUrl: url,
+  });
+
+  return {
+    autoUpdatePrice: snapshot.autoUpdatePrice,
+    categoryId: findSuggestedCategoryId(categories, {
+      productLineName: snapshot.sourceProductLine ?? "",
+      productName: snapshot.name,
+      productTypeName: snapshot.sourceProductType,
+    }),
+    compareAtCents: snapshot.compareAtCents,
+    description: snapshot.description,
+    images: snapshot.images,
+    name: snapshot.name,
+    priceCents: snapshot.priceCents,
+    seoDescription: snapshot.seoDescription,
+    seoTitle: snapshot.seoTitle,
+    slug: snapshot.slug,
+    sourceImageUrl: snapshot.sourceImageUrl,
+    sourceMarketplace: "tcgplayer",
+    sourcePriceCents: snapshot.sourcePriceCents,
+    sourceProductId: snapshot.sourceProductId,
+    sourceProductLine: snapshot.sourceProductLine,
+    sourceProductType: snapshot.sourceProductType,
+    sourceSetName: snapshot.sourceSetName,
+    sourceUrl: snapshot.sourceUrl,
+    warningMessage: snapshot.warningMessage,
+  };
+}
+
+export async function refreshTrackedTcgplayerSource({
+  sourceUrl,
+  sourceProductId,
+  previousSourcePriceCents,
+}: {
+  sourceUrl?: string | null;
+  sourceProductId?: number | null;
+  previousSourcePriceCents?: number | null;
+}): Promise<TcgplayerTrackedSourceSnapshot> {
+  const trimmedSourceUrl = sourceUrl?.trim() ?? "";
+  const extractedProductId = trimmedSourceUrl ? extractTcgplayerProductId(trimmedSourceUrl) : null;
+  const productId = extractedProductId ?? sourceProductId ?? null;
+
   if (!productId) {
     throw new Error("Paste a full TCGplayer product URL so I can find the product ID.");
   }
 
-  const { details, resolved } = await fetchResolvedTcgplayerPricing(productId);
+  const { details, resolved } = await fetchResolvedTcgplayerPricing(productId, previousSourcePriceCents);
   const productName = details.productName.trim();
   const description = stripHtml(details.customAttributes?.description);
+  const normalizedSourceUrl = trimmedSourceUrl || `https://www.tcgplayer.com/product/${productId}`;
   const sourcePriceCents = resolved.sourcePriceCents;
 
   return {
     autoUpdatePrice: !resolved.requiresManualReview,
-    categoryId: findSuggestedCategoryId(categories, {
-      productLineName: details.productLineName ?? "",
-      productName,
-      productTypeName: details.productTypeName,
-    }),
     compareAtCents: sourcePriceCents,
     description,
     images: [{ url: buildTcgplayerImageUrl(productId, 1000), altText: productName }],
@@ -639,13 +698,12 @@ export async function importFromTcgplayerUrl(url: string, categories: CategoryRe
     seoTitle: productName,
     slug: slugify(productName),
     sourceImageUrl: buildTcgplayerImageUrl(productId, 1000),
-    sourceMarketplace: "tcgplayer",
     sourcePriceCents,
     sourceProductId: productId,
     sourceProductLine: details.productLineName,
     sourceProductType: details.productTypeName,
     sourceSetName: details.setName,
-    sourceUrl: url.trim(),
+    sourceUrl: normalizedSourceUrl,
     warningMessage: resolved.requiresManualReview
       ? `Price discrepancy detected for ${productName}. Manual review required before auto pricing is enabled.`
       : resolved.warningMessage,

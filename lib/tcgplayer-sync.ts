@@ -1,6 +1,23 @@
 import { prisma } from "./prisma";
-import { buildTcgplayerImageUrl, fetchResolvedTcgplayerPricing } from "./tcgplayer";
+import { refreshTrackedTcgplayerSource } from "./tcgplayer";
 import { applyTrackedTcgplayerPricing } from "./pricing";
+
+export type TcgplayerSyncResult = {
+  id: string;
+  name: string;
+  sourceSetName: string | null;
+  sourceProductType: string | null;
+  previousStorePriceCents: number;
+  nextStorePriceCents: number;
+  previousSourcePriceCents: number | null;
+  nextSourcePriceCents: number | null;
+  autoUpdatePrice: boolean;
+  storefrontUpdated: boolean;
+  sourceUpdated: boolean;
+  warningMessage: string | null;
+  errorMessage: string | null;
+  lastSyncedAt: string;
+};
 
 export function isDatabaseQuotaExceededError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -32,9 +49,12 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
     select: {
       id: true,
       name: true,
-      autoUpdatePrice: true,
       priceCents: true,
       compareAtCents: true,
+      autoUpdatePrice: true,
+      sourceUrl: true,
+      sourceSetName: true,
+      sourceProductType: true,
       sourceProductId: true,
       sourcePriceCents: true,
     },
@@ -45,59 +65,101 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
   let updatedPrices = 0;
   let warnings = 0;
   const warningProducts: string[] = [];
+  const results: TcgplayerSyncResult[] = [];
 
   for (const product of trackedProducts) {
     if (!product.sourceProductId) continue;
 
     try {
-      const { details, resolved } = await fetchResolvedTcgplayerPricing(
-        product.sourceProductId,
-        product.sourcePriceCents,
-      );
-      const sourcePriceCents = resolved.sourcePriceCents;
+      const snapshot = await refreshTrackedTcgplayerSource({
+        sourceUrl: product.sourceUrl,
+        sourceProductId: product.sourceProductId,
+        previousSourcePriceCents: product.sourcePriceCents,
+      });
+      const sourcePriceCents = snapshot.sourcePriceCents;
       const pricing = applyTrackedTcgplayerPricing({
         autoUpdatePrice: product.autoUpdatePrice,
         priceCents: sourcePriceCents,
         sourcePriceCents,
       });
-
-      const manualReviewMessage = resolved.requiresManualReview
+      const nowIso = new Date().toISOString();
+      const requiresManualReview = !snapshot.autoUpdatePrice && snapshot.warningMessage?.startsWith("Price discrepancy detected");
+      const manualReviewMessage = requiresManualReview
         ? `Price discrepancy detected for ${product.name} - manual review required. Live TCGplayer review price: ${formatDollarsFromCents(sourcePriceCents)}.`
-        : resolved.warningMessage;
+        : snapshot.warningMessage;
 
       await prisma.product.update({
         where: { id: product.id },
         data: {
-          compareAtCents: resolved.requiresManualReview ? product.compareAtCents : pricing.compareAtCents,
-          priceCents: resolved.requiresManualReview
+          compareAtCents: requiresManualReview ? product.compareAtCents : pricing.compareAtCents,
+          priceCents: requiresManualReview
             ? undefined
             : product.autoUpdatePrice
               ? pricing.priceCents
               : undefined,
-          sourcePriceCents: resolved.requiresManualReview ? product.sourcePriceCents : sourcePriceCents,
-          sourceImageUrl: buildTcgplayerImageUrl(product.sourceProductId, 1000),
-          sourceProductLine: details.productLineName?.trim() ?? null,
-          sourceProductType: details.productTypeName?.trim() ?? null,
-          sourceSetName: details.setName?.trim() ?? null,
-          lastSyncedAt: new Date(),
+          sourceUrl: snapshot.sourceUrl,
+          sourceProductId: snapshot.sourceProductId,
+          sourcePriceCents: requiresManualReview ? product.sourcePriceCents : sourcePriceCents,
+          sourceImageUrl: snapshot.sourceImageUrl,
+          sourceProductLine: snapshot.sourceProductLine?.trim() ?? null,
+          sourceProductType: snapshot.sourceProductType?.trim() ?? null,
+          sourceSetName: snapshot.sourceSetName?.trim() ?? null,
+          lastSyncedAt: new Date(nowIso),
           lastSyncError: manualReviewMessage,
         },
       });
 
       synced += 1;
-      if (!resolved.requiresManualReview && product.autoUpdatePrice) updatedPrices += 1;
+      if (!requiresManualReview && product.autoUpdatePrice) updatedPrices += 1;
       if (manualReviewMessage) {
         warnings += 1;
         warningProducts.push(product.name);
       }
+
+      results.push({
+        id: product.id,
+        name: product.name,
+        sourceSetName: snapshot.sourceSetName?.trim() ?? product.sourceSetName ?? null,
+        sourceProductType: snapshot.sourceProductType?.trim() ?? product.sourceProductType ?? null,
+        previousStorePriceCents: product.priceCents,
+        nextStorePriceCents:
+          requiresManualReview || !product.autoUpdatePrice ? product.priceCents : pricing.priceCents,
+        previousSourcePriceCents: product.sourcePriceCents,
+        nextSourcePriceCents: requiresManualReview ? product.sourcePriceCents : sourcePriceCents,
+        autoUpdatePrice: product.autoUpdatePrice,
+        storefrontUpdated:
+          !requiresManualReview && product.autoUpdatePrice && product.priceCents !== pricing.priceCents,
+        sourceUpdated: !requiresManualReview && product.sourcePriceCents !== sourcePriceCents,
+        warningMessage: manualReviewMessage,
+        errorMessage: null,
+        lastSyncedAt: nowIso,
+      });
     } catch (error) {
       failed += 1;
+      const nowIso = new Date().toISOString();
+      const errorMessage = toErrorMessage(error);
       await prisma.product.update({
         where: { id: product.id },
         data: {
-          lastSyncedAt: new Date(),
-          lastSyncError: toErrorMessage(error),
+          lastSyncedAt: new Date(nowIso),
+          lastSyncError: errorMessage,
         },
+      });
+      results.push({
+        id: product.id,
+        name: product.name,
+        sourceSetName: product.sourceSetName,
+        sourceProductType: product.sourceProductType,
+        previousStorePriceCents: product.priceCents,
+        nextStorePriceCents: product.priceCents,
+        previousSourcePriceCents: product.sourcePriceCents,
+        nextSourcePriceCents: product.sourcePriceCents,
+        autoUpdatePrice: product.autoUpdatePrice,
+        storefrontUpdated: false,
+        sourceUpdated: false,
+        warningMessage: null,
+        errorMessage,
+        lastSyncedAt: nowIso,
       });
     }
   }
@@ -105,6 +167,7 @@ export async function syncTcgplayerProducts(productIds?: string[]) {
   return {
     failed,
     scanned: trackedProducts.length,
+    results,
     synced,
     updatedPrices,
     warnings,
