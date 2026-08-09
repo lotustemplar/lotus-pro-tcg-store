@@ -82,9 +82,14 @@ export default async function AdminProductsPage({
 
   const requestedPage = normalizePage(searchParams?.page);
   const visibleProductsWhere = {
-    seoKeywords: {
-      not: ARCHIVED_DELETED_PRODUCT_KEYWORD,
-    },
+    OR: [
+      { seoKeywords: null },
+      {
+        seoKeywords: {
+          not: ARCHIVED_DELETED_PRODUCT_KEYWORD,
+        },
+      },
+    ],
   } as const;
 
   const totalProducts = await prisma.product.count({

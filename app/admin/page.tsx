@@ -6,9 +6,14 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
   const visibleProductsWhere = {
-    seoKeywords: {
-      not: ARCHIVED_DELETED_PRODUCT_KEYWORD,
-    },
+    OR: [
+      { seoKeywords: null },
+      {
+        seoKeywords: {
+          not: ARCHIVED_DELETED_PRODUCT_KEYWORD,
+        },
+      },
+    ],
   } as const;
 
   const [productCount, lowStockCount, outOfStockCount, pendingOrders, restockSignups] = await Promise.all([
