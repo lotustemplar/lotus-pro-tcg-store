@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { getAllCategoriesWithParent } from "@/lib/admin";
+import { ARCHIVED_DELETED_PRODUCT_KEYWORD } from "@/lib/product-delete";
 import { getDisplayProductName } from "@/lib/product-display";
 import { ProductsManager } from "./ProductsManager";
 
@@ -80,12 +81,26 @@ export default async function AdminProductsPage({
     }));
 
   const requestedPage = normalizePage(searchParams?.page);
-  const totalProducts = await prisma.product.count();
+  const visibleProductsWhere = {
+    OR: [
+      { seoKeywords: null },
+      {
+        seoKeywords: {
+          not: ARCHIVED_DELETED_PRODUCT_KEYWORD,
+        },
+      },
+    ],
+  } as const;
+
+  const totalProducts = await prisma.product.count({
+    where: visibleProductsWhere,
+  });
   const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
   const skip = (currentPage - 1) * PAGE_SIZE;
 
   const products = await prisma.product.findMany({
+    where: visibleProductsWhere,
     orderBy: { name: "asc" },
     skip,
     take: PAGE_SIZE,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import { getArchivedDeletedProductData } from "@/lib/product-delete";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { submitFullSiteToIndexNow } from "@/lib/indexnow";
 import { Prisma } from "@prisma/client";
@@ -77,13 +78,7 @@ export async function POST(req: NextRequest) {
           if (archivedIds.length > 0) {
             await tx.product.updateMany({
               where: { id: { in: archivedIds } },
-              data: {
-                isActive: false,
-                featuredOnHome: false,
-                featuredOrder: 0,
-                autoUpdatePrice: false,
-                quantity: 0,
-              },
+              data: getArchivedDeletedProductData(),
             });
           }
 

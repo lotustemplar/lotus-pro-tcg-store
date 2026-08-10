@@ -6,6 +6,7 @@ import {
   isExclusiveSaleFeaturedOrder,
   normalizeFeaturedPlacement,
 } from "@/lib/featured-home";
+import { getArchivedDeletedProductData } from "@/lib/product-delete";
 import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { getCategoryUrl, getHomepageUrl, getProductUrl, submitIndexNowUrls } from "@/lib/indexnow";
@@ -112,14 +113,6 @@ function toAdminProductPayload(product: {
     categoryId: product.categoryId,
   };
 }
-
-const ORDER_LINKED_ARCHIVE_DATA = {
-  isActive: false,
-  featuredOnHome: false,
-  featuredOrder: 0,
-  autoUpdatePrice: false,
-  quantity: 0,
-} as const;
 
 function isOrderHistoryDeleteBlock(error: unknown) {
   return (
@@ -393,7 +386,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     if (isOrderHistoryDeleteBlock(error)) {
       const archived = await prisma.product.update({
         where: { id: params.id },
-        data: ORDER_LINKED_ARCHIVE_DATA,
+        data: getArchivedDeletedProductData(),
         select: {
           id: true,
           name: true,

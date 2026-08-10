@@ -1,13 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { ARCHIVED_DELETED_PRODUCT_KEYWORD } from "@/lib/product-delete";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
+  const visibleProductsWhere = {
+    OR: [
+      { seoKeywords: null },
+      {
+        seoKeywords: {
+          not: ARCHIVED_DELETED_PRODUCT_KEYWORD,
+        },
+      },
+    ],
+  } as const;
+
   const [productCount, lowStockCount, outOfStockCount, pendingOrders, restockSignups] = await Promise.all([
-    prisma.product.count(),
-    prisma.product.count({ where: { quantity: { gt: 0, lt: 5 } } }),
-    prisma.product.count({ where: { quantity: { lte: 0 } } }),
+    prisma.product.count({ where: visibleProductsWhere }),
+    prisma.product.count({ where: { ...visibleProductsWhere, quantity: { gt: 0, lt: 5 } } }),
+    prisma.product.count({ where: { ...visibleProductsWhere, quantity: { lte: 0 } } }),
     prisma.order.count({ where: { status: "paid" } }),
     prisma.restockNotify.count({ where: { notified: false } }),
   ]);

@@ -523,8 +523,8 @@ export function ProductsManager({
     }
 
     if (data.archived && data.product) {
-      setProducts((current) => current.map((entry) => (entry.id === id ? { ...data.product! } : entry)));
-      setSavedProducts((current) => current.map((entry) => (entry.id === id ? { ...data.product! } : entry)));
+      setProducts((current) => current.filter((entry) => entry.id !== id));
+      setSavedProducts((current) => current.filter((entry) => entry.id !== id));
       setMessage({
         type: "success",
         text:
@@ -570,38 +570,15 @@ export function ProductsManager({
     if (payload.action === "delete") {
       const deletedIdSet = new Set(data.deletedIds ?? selectedIds);
       const archivedIdSet = new Set(data.archivedIds ?? []);
+      const removedIdSet = new Set([...deletedIdSet, ...archivedIdSet]);
 
       setProducts((current) =>
         current
-          .filter((entry) => !deletedIdSet.has(entry.id))
-          .map((entry) =>
-            archivedIdSet.has(entry.id)
-              ? {
-                  ...entry,
-                  isActive: false,
-                  featuredOnHome: false,
-                  featuredOrder: 0,
-                  autoUpdatePrice: false,
-                  quantity: 0,
-                }
-              : entry,
-          ),
+          .filter((entry) => !removedIdSet.has(entry.id)),
       );
       setSavedProducts((current) =>
         current
-          .filter((entry) => !deletedIdSet.has(entry.id))
-          .map((entry) =>
-            archivedIdSet.has(entry.id)
-              ? {
-                  ...entry,
-                  isActive: false,
-                  featuredOnHome: false,
-                  featuredOrder: 0,
-                  autoUpdatePrice: false,
-                  quantity: 0,
-                }
-              : entry,
-          ),
+          .filter((entry) => !removedIdSet.has(entry.id)),
       );
     } else if (payload.action === "setActive") {
       const value = Boolean(payload.value);
