@@ -14,7 +14,7 @@ export default async function AdminDashboard() {
         },
       },
     ],
-  } as const;
+  };
 
   const [productCount, lowStockCount, outOfStockCount, pendingOrders, restockSignups] = await Promise.all([
     prisma.product.count({ where: visibleProductsWhere }),

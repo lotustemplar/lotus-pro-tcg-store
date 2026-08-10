@@ -90,7 +90,7 @@ export default async function AdminProductsPage({
         },
       },
     ],
-  } as const;
+  };
 
   const totalProducts = await prisma.product.count({
     where: visibleProductsWhere,
