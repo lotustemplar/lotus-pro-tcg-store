@@ -4,7 +4,6 @@ import { getAdminSession } from "@/lib/auth";
 import { getArchivedDeletedProductData } from "@/lib/product-delete";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import { submitFullSiteToIndexNow } from "@/lib/indexnow";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 const productIdsSchema = z.array(z.string().min(1)).min(1);
@@ -36,13 +35,6 @@ const bulkSchema = z.discriminatedUnion("action", [
   }),
 ]);
 
-function isOrderHistoryDeleteBlock(error: unknown) {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    (error.code === "P2003" || error.code === "P2014")
-  );
-}
-
 export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -57,14 +49,19 @@ export async function POST(req: NextRequest) {
 
   switch (parsed.data.action) {
     case "delete": {
-      const linkedOrderItems = await prisma.orderItem.findMany({
-        where: { productId: { in: parsed.data.productIds } },
-        select: { productId: true },
-        distinct: ["productId"],
+      const products = await prisma.product.findMany({
+        where: { id: { in: parsed.data.productIds } },
+        select: {
+          id: true,
+          _count: {
+            select: {
+              orderItems: true,
+            },
+          },
+        },
       });
-      const linkedIdSet = new Set(linkedOrderItems.map((item) => item.productId));
-      const deletableIds = parsed.data.productIds.filter((id) => !linkedIdSet.has(id));
-      const archivedIds = parsed.data.productIds.filter((id) => linkedIdSet.has(id));
+      const deletableIds = products.filter((product) => product._count.orderItems === 0).map((product) => product.id);
+      const archivedIds = products.filter((product) => product._count.orderItems > 0).map((product) => product.id);
 
       try {
         const result = await prisma.$transaction(async (tx) => {
@@ -85,8 +82,15 @@ export async function POST(req: NextRequest) {
           return { deletedCount: deleted.count, archivedIds };
         });
 
-        revalidateCatalogCache();
-        await submitFullSiteToIndexNow();
+        try {
+          revalidateCatalogCache();
+          await submitFullSiteToIndexNow();
+        } catch (followUpError) {
+          console.error("Bulk product delete follow-up failed", {
+            productIds: parsed.data.productIds,
+            message: followUpError instanceof Error ? followUpError.message : String(followUpError),
+          });
+        }
 
         return NextResponse.json({
           ok: true,
@@ -99,19 +103,8 @@ export async function POST(req: NextRequest) {
               : undefined,
         });
       } catch (error) {
-        if (isOrderHistoryDeleteBlock(error)) {
-          return NextResponse.json(
-            {
-              error:
-                "One or more selected products are tied to past orders and cannot be permanently deleted.",
-            },
-            { status: 409 },
-          );
-        }
-
         console.error("Bulk product delete failed", {
           productIds: parsed.data.productIds,
-          code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined,
           message: error instanceof Error ? error.message : String(error),
         });
 

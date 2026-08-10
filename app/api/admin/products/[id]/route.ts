@@ -358,7 +358,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const existing = await prisma.product.findUnique({
     where: { id: params.id },
     select: {
+      id: true,
+      name: true,
       slug: true,
+      _count: {
+        select: {
+          orderItems: true,
+        },
+      },
       category: {
         select: {
           slug: true,
@@ -374,16 +381,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!existing) return NextResponse.json({ error: "Product not found." }, { status: 404 });
 
   try {
-    await prisma.product.delete({ where: { id: params.id } });
-    revalidateCatalogCache();
-    await submitIndexNowUrls([
-      getHomepageUrl(),
-      getProductUrl(existing.slug),
-      getCategoryUrl(existing.category),
-    ]);
-    return NextResponse.json({ ok: true, deleted: true });
-  } catch (error) {
-    if (isOrderHistoryDeleteBlock(error)) {
+    if (existing._count.orderItems > 0) {
       const archived = await prisma.product.update({
         where: { id: params.id },
         data: getArchivedDeletedProductData(),
@@ -406,12 +404,19 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
         },
       });
 
-      revalidateCatalogCache();
-      await submitIndexNowUrls([
-        getHomepageUrl(),
-        getProductUrl(existing.slug),
-        getCategoryUrl(existing.category),
-      ]);
+      try {
+        revalidateCatalogCache();
+        await submitIndexNowUrls([
+          getHomepageUrl(),
+          getProductUrl(existing.slug),
+          getCategoryUrl(existing.category),
+        ]);
+      } catch (followUpError) {
+        console.error("Product archive follow-up failed", {
+          productId: params.id,
+          message: followUpError instanceof Error ? followUpError.message : String(followUpError),
+        });
+      }
 
       return NextResponse.json({
         ok: true,
@@ -421,6 +426,29 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
         product: toAdminProductPayload(archived),
       });
     }
+
+    await prisma.product.delete({ where: { id: params.id } });
+
+    try {
+      revalidateCatalogCache();
+      await submitIndexNowUrls([
+        getHomepageUrl(),
+        getProductUrl(existing.slug),
+        getCategoryUrl(existing.category),
+      ]);
+    } catch (followUpError) {
+      console.error("Product delete follow-up failed", {
+        productId: params.id,
+        message: followUpError instanceof Error ? followUpError.message : String(followUpError),
+      });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      deleted: true,
+      message: `Deleted ${existing.name}.`,
+    });
+  } catch (error) {
 
     console.error("Product delete failed", {
       productId: params.id,
