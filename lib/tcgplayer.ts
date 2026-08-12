@@ -91,6 +91,7 @@ export type TcgplayerTrackedSourceSnapshot = {
 type TcgplayerListingsResponse = {
   results?: Array<{
     results?: Array<{
+      channelId?: number | null;
       sellerName?: string | null;
       listingType?: string | null;
       price?: number | null;
@@ -103,6 +104,7 @@ type TcgplayerListingsResponse = {
 };
 
 export type TcgplayerTopListing = {
+  channelId: number;
   sellerName: string;
   price: number;
   shippingPrice: number;
@@ -127,6 +129,7 @@ export type ResolvedTcgplayerSourcePrice = {
 function normalizeListing(
   listing:
     | {
+        channelId?: number | null;
         sellerName?: string | null;
         listingType?: string | null;
         price?: number | null;
@@ -151,6 +154,7 @@ function normalizeListing(
   const quantity = Math.max(0, Math.trunc(nonNegativeNumber(listing?.quantity) ?? 0));
 
   return {
+    channelId: Math.trunc(nonNegativeNumber(listing?.channelId) ?? 0),
     sellerName: listing?.sellerName?.trim() || "TCGplayer seller",
     price,
     shippingPrice,
@@ -168,8 +172,8 @@ function isSuspiciousOutlier({
   nextCandidate: TcgplayerTopListing | null;
   details: TcgplayerProductDetails;
 }) {
-  const MIN_OUTLIER_GAP = 25;
-  const RELATIVE_FLOOR = 0.9;
+  const MIN_OUTLIER_GAP = 10;
+  const RELATIVE_FLOOR = 0.94;
   const detailsFloor =
     positiveNumber(details.lowestPriceWithShipping) ??
     positiveNumber(details.marketPrice) ??
@@ -196,6 +200,11 @@ function isSuspiciousOutlier({
 
 function formatListingAmount(listing: TcgplayerTopListing) {
   return `$${listing.totalPrice.toFixed(2)}`;
+}
+
+function preferPublicStorefrontListings(listings: TcgplayerTopListing[]) {
+  const publicChannelListings = listings.filter((listing) => listing.channelId === 0);
+  return publicChannelListings.length > 0 ? publicChannelListings : listings;
 }
 
 function normalizeText(value: string) {
@@ -327,9 +336,11 @@ export async function fetchTcgplayerTopListing(productId: number): Promise<Tcgpl
   }
 
   const data = (await response.json()) as TcgplayerListingsResponse;
-  const listings = (data.results?.[0]?.results ?? [])
+  const listings = preferPublicStorefrontListings(
+    (data.results?.[0]?.results ?? [])
     .map((listing) => normalizeListing(listing))
-    .filter((listing): listing is TcgplayerTopListing => listing != null);
+    .filter((listing): listing is TcgplayerTopListing => listing != null),
+  );
 
   return listings[0] ?? null;
 }
@@ -378,9 +389,11 @@ export async function fetchResolvedTcgplayerPricing(
       .catch(() => null),
   ]);
 
-  const topListings = (topListingsResponse?.results?.[0]?.results ?? [])
+  const topListings = preferPublicStorefrontListings(
+    (topListingsResponse?.results?.[0]?.results ?? [])
     .map((listing) => normalizeListing(listing))
-    .filter((listing): listing is TcgplayerTopListing => listing != null);
+    .filter((listing): listing is TcgplayerTopListing => listing != null),
+  );
 
   const resolvedTopListing =
     topListings.find((candidate, index) => {
