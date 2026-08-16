@@ -104,6 +104,10 @@ model Order {
   shippingCents       Int
   totalCents          Int
   shippingAddress     String?     // JSON blob
+  confirmationEmailSentAt DateTime?
+  confirmationEmailError  String?
+  saleNotificationSentAt  DateTime?
+  saleNotificationError   String?
   trackingCarrier     String?
   trackingNumber      String?
   trackingUrl         String?
