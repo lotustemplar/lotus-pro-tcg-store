@@ -4,14 +4,16 @@ import Image from "next/image";
 import { useCart } from "./CartContext";
 import { formatCents } from "@/lib/format";
 import { calculateShippingCents, remainingForFreeShippingCents } from "@/lib/shipping";
+import { MYSTERY_BUNDLE_SLUG } from "@/lib/mystery-bundle";
 import { useState } from "react";
 
 export function CartDrawer() {
-  const { items, isOpen, close, removeItem, setQuantity, subtotalCents, clear } = useCart();
+  const { items, isOpen, close, removeItem, setQuantity, subtotalCents, discountCents, discountedSubtotalCents, clear } = useCart();
   const [checkingOut, setCheckingOut] = useState(false);
-  const shippingCents = calculateShippingCents(subtotalCents);
-  const totalCents = subtotalCents + shippingCents;
-  const remainingForFree = remainingForFreeShippingCents(subtotalCents);
+  const containsMysteryBundle = items.some((item) => item.slug === MYSTERY_BUNDLE_SLUG);
+  const shippingCents = calculateShippingCents(discountedSubtotalCents, { excludeFreeShipping: containsMysteryBundle });
+  const totalCents = discountedSubtotalCents + shippingCents;
+  const remainingForFree = remainingForFreeShippingCents(discountedSubtotalCents);
 
   async function checkout() {
     setCheckingOut(true);
@@ -47,7 +49,11 @@ export function CartDrawer() {
           </button>
         </div>
 
-        {remainingForFree > 0 ? (
+        {containsMysteryBundle ? (
+          <div className="border-b border-border bg-gold/10 px-5 py-2 text-xs text-gold">
+            Mystery Booster Bundles use the flat {formatCents(shippingCents)} shipping rate and are excluded from free shipping.
+          </div>
+        ) : remainingForFree > 0 ? (
           <div className="border-b border-border bg-bg-elevated px-5 py-2 text-xs text-gray-300">
             Add <span className="font-semibold text-brand-300">{formatCents(remainingForFree)}</span> more for free shipping!
           </div>
@@ -98,6 +104,18 @@ export function CartDrawer() {
             <span>Subtotal</span>
             <span>{formatCents(subtotalCents)}</span>
           </div>
+          {discountCents > 0 && (
+            <div className="mb-1 flex justify-between text-sm font-semibold text-emerald-300">
+              <span>Mystery bundle discount (5%)</span>
+              <span>-{formatCents(discountCents)}</span>
+            </div>
+          )}
+          {discountCents > 0 && (
+            <div className="mb-1 flex justify-between text-sm text-gray-300">
+              <span>Subtotal after discount</span>
+              <span>{formatCents(discountedSubtotalCents)}</span>
+            </div>
+          )}
           <div className="mb-3 flex justify-between text-sm text-gray-300">
             <span>Shipping</span>
             <span>{shippingCents === 0 ? "FREE" : formatCents(shippingCents)}</span>

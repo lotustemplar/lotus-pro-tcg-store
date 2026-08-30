@@ -16,6 +16,8 @@ const heroSlideSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   imageUrl: z.string().nullable().optional(),
+  videoUrl: z.string().nullable().optional(),
+  videoLoop: z.boolean().optional(),
   buttonLabel: z.string().min(1),
   buttonHref: z.string().min(1),
 });
@@ -81,6 +83,9 @@ export async function PUT(req: NextRequest) {
         name: slide.name,
         imageUrl:
           slide.imageUrl !== undefined ? slide.imageUrl : (existingSlide?.imageUrl ?? null),
+        videoUrl:
+          slide.videoUrl !== undefined ? slide.videoUrl : (existingSlide?.videoUrl ?? null),
+        videoLoop: slide.videoLoop !== undefined ? slide.videoLoop : (existingSlide?.videoLoop ?? true),
         buttonLabel: slide.buttonLabel,
         buttonHref: slide.buttonHref,
       };

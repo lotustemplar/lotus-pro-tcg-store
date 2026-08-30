@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { calculateShippingCents } from "@/lib/shipping";
+import { MYSTERY_BUNDLE_SKU, mysteryBundleDiscountedUnitCents } from "@/lib/mystery-bundle";
 import { z } from "zod";
 import Stripe from "stripe";
 
@@ -22,6 +23,7 @@ type CheckoutProduct = {
   priceCents: number;
   quantity: number;
   isActive: boolean;
+  sku: string | null;
   images: { url: string }[];
 };
 
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
     include: { images: { take: 1, orderBy: { sortOrder: "asc" } } },
   });
 
-  const lineItems: { productId: string; name: string; priceCents: number; quantity: number; image: string | null }[] = [];
+  const lineItems: { productId: string; name: string; priceCents: number; quantity: number; image: string | null; sku: string | null }[] = [];
 
   for (const item of parsed.data.items) {
     const product = products.find((p: CheckoutProduct) => p.id === item.productId);
@@ -68,11 +70,24 @@ export async function POST(req: NextRequest) {
       priceCents: product.priceCents,
       quantity: item.quantity,
       image: product.images[0]?.url ?? null,
+      sku: product.sku,
     });
   }
 
-  const subtotalCents = lineItems.reduce((sum, i) => sum + i.priceCents * i.quantity, 0);
-  const shippingCents = calculateShippingCents(subtotalCents);
+  const mysteryBundleQuantity = lineItems
+    .filter((item) => item.sku === MYSTERY_BUNDLE_SKU)
+    .reduce((sum, item) => sum + item.quantity, 0);
+  const hasMysteryBundleDiscount = mysteryBundleQuantity >= 2;
+  const chargedLineItems = lineItems.map((item) => ({
+    ...item,
+    priceCents: item.sku === MYSTERY_BUNDLE_SKU && hasMysteryBundleDiscount
+      ? mysteryBundleDiscountedUnitCents(item.priceCents, mysteryBundleQuantity)
+      : item.priceCents,
+  }));
+
+  const subtotalCents = chargedLineItems.reduce((sum, i) => sum + i.priceCents * i.quantity, 0);
+  const containsMysteryBundle = chargedLineItems.some((item) => item.sku === MYSTERY_BUNDLE_SKU);
+  const shippingCents = calculateShippingCents(subtotalCents, { excludeFreeShipping: containsMysteryBundle });
 
   const order = await prisma.order.create({
     data: {
@@ -82,7 +97,7 @@ export async function POST(req: NextRequest) {
       shippingCents,
       totalCents: subtotalCents + shippingCents,
       items: {
-        create: lineItems.map((i) => ({
+        create: chargedLineItems.map((i) => ({
           productId: i.productId,
           nameSnapshot: i.name,
           priceCents: i.priceCents,
@@ -102,7 +117,7 @@ export async function POST(req: NextRequest) {
         allowed_countries: getAllowedShippingCountries(),
       },
       line_items: [
-        ...lineItems.map((i) => ({
+        ...chargedLineItems.map((i) => ({
           quantity: i.quantity,
           price_data: {
             currency: "usd",

@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
-import { isStorefrontConnectionError, logStorefrontFallback } from "./storefront-db";
+import { withStorefrontDbFallback } from "./storefront-db";
 import { STORE_CACHE_TAGS, STORE_CONFIG_REVALIDATE_SECONDS } from "./storefront-cache";
 
 export const SITE_SETTINGS_ID = "site";
@@ -27,6 +27,8 @@ const RECOVERY_SITE_BRANDING = {
       id: "legacy-slide-1",
       name: "Hero Banner",
       imageUrl: "/branding/recovery/hero-slide-1.webp",
+      videoUrl: null,
+      videoLoop: true,
       buttonLabel: "Shop Magic",
       buttonHref: "/category/magic-the-gathering",
     },
@@ -44,6 +46,8 @@ export type HeroSlide = {
   id: string;
   name: string;
   imageUrl: string | null;
+  videoUrl: string | null;
+  videoLoop: boolean;
   buttonLabel: string;
   buttonHref: string;
 };
@@ -175,13 +179,16 @@ function normalizeHeroSlide(slide: Partial<HeroSlide> | null | undefined, index:
   const buttonLabel = requiredValue(slide?.buttonLabel, "Shop Now");
   const buttonHref = requiredValue(slide?.buttonHref, "/");
   const imageUrl = optionalValue(slide?.imageUrl);
+  const videoUrl = optionalValue(slide?.videoUrl);
 
-  if (!imageUrl) return null;
+  if (!imageUrl && !videoUrl) return null;
 
   return {
     id: requiredValue(slide?.id, `slide-${index + 1}`),
     name,
     imageUrl,
+    videoUrl,
+    videoLoop: slide?.videoLoop !== false,
     buttonLabel,
     buttonHref,
   };
@@ -210,6 +217,8 @@ function resolveHeroSlides(record: SiteSettingsRecord): HeroSlide[] {
       id: "legacy-slide-1",
       name: "Hero Banner",
       imageUrl: legacyBanner,
+      videoUrl: null,
+      videoLoop: true,
       buttonLabel: requiredValue(record?.heroPrimaryLabel, DEFAULT_SITE_SETTINGS.heroPrimaryLabel),
       buttonHref: requiredValue(record?.heroPrimaryHref, DEFAULT_SITE_SETTINGS.heroPrimaryHref),
     },
@@ -388,16 +397,7 @@ const getCachedSiteSettingsRecord = unstable_cache(
 );
 
 export async function getSiteSettings(): Promise<SiteSettings> {
-  try {
-    const settings = await getCachedSiteSettingsRecord();
+  const settings = await withStorefrontDbFallback("site-settings", null, () => getCachedSiteSettingsRecord());
 
-    return mergeSiteSettings(settings);
-  } catch (error) {
-    if (isStorefrontConnectionError(error)) {
-      logStorefrontFallback("site settings", error);
-      return mergeSiteSettings(DEFAULT_SITE_SETTINGS);
-    }
-
-    throw error;
-  }
+  return mergeSiteSettings(settings);
 }

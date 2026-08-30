@@ -10,7 +10,7 @@ export function remainingForFreeShippingCents(subtotalCents: number): number {
   return FREE_SHIPPING_THRESHOLD_CENTS + 1 - subtotalCents;
 }
 
-export function calculateShippingCents(subtotalCents: number): number {
-  if (qualifiesForFreeShipping(subtotalCents)) return 0;
+export function calculateShippingCents(subtotalCents: number, options?: { excludeFreeShipping?: boolean }): number {
+  if (!options?.excludeFreeShipping && qualifiesForFreeShipping(subtotalCents)) return 0;
   return FLAT_SHIPPING_CENTS;
 }

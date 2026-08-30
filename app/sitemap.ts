@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
+import { CATEGORY_TREE } from "@/lib/categories";
 import { prisma } from "@/lib/prisma";
+import { isStorefrontConnectionError, logStorefrontFallback, withStorefrontDbFallback } from "@/lib/storefront-db";
 import { getSiteUrl } from "@/lib/metadata";
-import { isStorefrontConnectionError, logStorefrontFallback } from "@/lib/storefront-db";
 import { STORE_CACHE_TAGS, STORE_SITEMAP_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
 export const revalidate = STORE_SITEMAP_REVALIDATE_SECONDS;
@@ -49,6 +50,23 @@ const getCachedSitemapProducts = unstable_cache(
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
 
+  const fallbackCategories = CATEGORY_TREE.flatMap((top) => [
+    { slug: top.slug, updatedAt: new Date(), parentId: null, parent: null },
+    ...top.subs.map((sub) => ({
+      slug: sub.slug,
+      updatedAt: new Date(),
+      parentId: top.slug,
+      parent: { slug: top.slug },
+    })),
+  ]);
+
+  const [categories, products] = await Promise.all([
+    withStorefrontDbFallback("sitemap-categories", fallbackCategories, () => getCachedSitemapCategories()),
+    withStorefrontDbFallback("sitemap-products", [] as Awaited<ReturnType<typeof prisma.product.findMany>>, () =>
+      getCachedSitemapProducts(),
+    ),
+  ]);
+
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: siteUrl,
@@ -62,11 +80,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.6,
     },
+    {
+      url: `${siteUrl}/returns`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${siteUrl}/mystery-booster-bag`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
   ];
-
-  if (!process.env.DATABASE_URL) {
-    return staticRoutes;
-  }
 
   try {
     const [categories, products] = await Promise.all([getCachedSitemapCategories(), getCachedSitemapProducts()]);

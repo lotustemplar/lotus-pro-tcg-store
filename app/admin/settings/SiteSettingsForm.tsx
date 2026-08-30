@@ -13,8 +13,9 @@ type SiteSettingsFormProps = {
   initial: SiteSettings;
 };
 
-type HeroSlideSavePayload = Omit<HeroSlide, "imageUrl"> & {
+type HeroSlideSavePayload = Omit<HeroSlide, "imageUrl" | "videoUrl"> & {
   imageUrl?: string | null;
+  videoUrl?: string | null;
 };
 
 type SiteSettingsSavePayload = Partial<Omit<SiteSettings, "heroSlides" | "categoryBackgrounds">> & {
@@ -25,6 +26,7 @@ type SiteSettingsSavePayload = Partial<Omit<SiteSettings, "heroSlides" | "catego
 type BrandAssetKey = "logoWideUrl" | "logoSquareUrl";
 
 const MAX_SOURCE_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_HERO_VIDEO_FILE_BYTES = 50 * 1024 * 1024;
 const HOMEPAGE_CATEGORY_SPECS = CATEGORY_TREE.slice(0, 5).map((category) => ({
   slug: category.slug,
   label: category.name,
@@ -183,6 +185,8 @@ function createSlide(index: number): HeroSlide {
     id: `slide-${Date.now()}-${index}`,
     name: `Slide ${index + 1}`,
     imageUrl: null,
+    videoUrl: null,
+    videoLoop: true,
     buttonLabel: "Shop Now",
     buttonHref: "/",
   };
@@ -211,13 +215,16 @@ function buildSiteSettingsPatch(current: SiteSettings, saved: SiteSettings): Sit
     patch.heroSlides = current.heroSlides.map((slide) => {
       const savedSlide = saved.heroSlides.find((item) => item.id === slide.id);
       const imageUnchanged = savedSlide?.imageUrl === slide.imageUrl;
+      const videoUnchanged = savedSlide?.videoUrl === slide.videoUrl;
 
       return {
         id: slide.id,
         name: slide.name,
         buttonLabel: slide.buttonLabel,
         buttonHref: slide.buttonHref,
+        videoLoop: slide.videoLoop !== false,
         ...(imageUnchanged ? {} : { imageUrl: slide.imageUrl }),
+        ...(videoUnchanged ? {} : { videoUrl: slide.videoUrl }),
       };
     });
   }
@@ -230,6 +237,7 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
   const [savedValues, setSavedValues] = useState<SiteSettings>(initial);
   const [saving, setSaving] = useState(false);
   const [uploadingAsset, setUploadingAsset] = useState<string | null>(null);
+  const [heroVideoFiles, setHeroVideoFiles] = useState<Record<number, File | null>>({});
   const [message, setMessage] = useState<Message | null>(null);
 
   const dirty = useMemo(() => JSON.stringify(values) !== JSON.stringify(savedValues), [savedValues, values]);
@@ -305,6 +313,73 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
       setMessage({
         type: "error",
         text: error instanceof Error ? error.message : "Failed to prepare that image.",
+      });
+    } finally {
+      setUploadingAsset(null);
+    }
+  }
+
+  function handleHeroVideoSelection(index: number, file: File | null) {
+    if (!file) return;
+    if (file.type !== "video/mp4" && !file.name.toLowerCase().endsWith(".mp4")) {
+      setMessage({ type: "error", text: "Please choose an MP4 video file." });
+      return;
+    }
+    if (file.size > MAX_HERO_VIDEO_FILE_BYTES) {
+      setMessage({ type: "error", text: "Please choose an MP4 under 50 MB, or paste a hosted video URL for a larger file." });
+      return;
+    }
+
+    setHeroVideoFiles((current) => ({ ...current, [index]: file }));
+    setMessage({ type: "success", text: `${file.name} selected. Click Upload to Supabase, then save and publish the site settings.` });
+  }
+
+  async function handleHeroVideoUpload(index: number) {
+    const file = heroVideoFiles[index];
+    if (!file) {
+      setMessage({ type: "error", text: "Choose an MP4 file before clicking Upload to Supabase." });
+      return;
+    }
+
+    const uploadKey = `hero-video-${index}`;
+    setUploadingAsset(uploadKey);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/admin/site-settings/hero-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: "video/mp4", size: file.size }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || typeof data.videoUrl !== "string" || typeof data.uploadUrl !== "string") {
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to upload video to Supabase Storage.");
+      }
+
+      const uploadResponse = await fetch(data.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "video/mp4",
+          "cache-control": "max-age=31536000",
+          "x-upsert": "false",
+        },
+        body: file,
+      });
+      if (!uploadResponse.ok) {
+        throw new Error("Supabase Storage could not receive the video. Please try again.");
+      }
+
+      updateSlide(index, { videoUrl: data.videoUrl });
+      setHeroVideoFiles((current) => {
+        const next = { ...current };
+        delete next[index];
+        return next;
+      });
+      setMessage({ type: "success", text: "Video uploaded to Supabase Storage. Save site settings to publish it." });
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to prepare that video.",
       });
     } finally {
       setUploadingAsset(null);
@@ -517,6 +592,51 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                         />
                       </label>
 
+                      <label className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-200">Hero MP4 Video (optional)</span>
+                        <input
+                          value={slide.videoUrl ?? ""}
+                          onChange={(event) => updateSlide(index, { videoUrl: event.target.value || null })}
+                          placeholder="Paste a hosted MP4 URL, or upload below"
+                          className="w-full rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-semibold text-gray-200">Upload Hero MP4</span>
+                        <input
+                          type="file"
+                          accept="video/mp4,.mp4"
+                          onChange={(event) => handleHeroVideoSelection(index, event.target.files?.[0] ?? null)}
+                          className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-md file:border-0 file:bg-gold file:px-4 file:py-2 file:font-semibold file:text-[#171007] hover:file:bg-gold/90"
+                        />
+                        <span className="mt-1 block text-xs text-gray-500">Step 1: choose an MP4 under 50 MB. Larger promotional videos can use the hosted MP4 URL field above.</span>
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            disabled={!heroVideoFiles[index] || uploadingAsset !== null}
+                            onClick={() => void handleHeroVideoUpload(index)}
+                            className="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-[#171007] hover:bg-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {uploadingAsset === `hero-video-${index}` ? "Uploading to Supabase..." : "Upload to Supabase"}
+                          </button>
+                          {heroVideoFiles[index] && (
+                            <span className="text-xs text-gray-400">{heroVideoFiles[index]?.name}</span>
+                          )}
+                        </div>
+                        <span className="mt-2 block text-xs text-gray-500">Step 2: click Upload to Supabase. Step 3: click Save & Publish Site Settings.</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 text-sm text-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={slide.videoLoop !== false}
+                          onChange={(event) => updateSlide(index, { videoLoop: event.target.checked })}
+                          className="h-4 w-4 rounded border-border bg-bg accent-brand-500"
+                        />
+                        Loop hero video continuously
+                      </label>
+
                       <div className="grid gap-4 md:grid-cols-2">
                         <label className="space-y-2">
                           <span className="text-sm font-semibold text-gray-200">Button Text</span>
@@ -539,13 +659,30 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                       {uploadingAsset === `hero-slide-${index}` && (
                         <p className="text-xs text-brand-300">Preparing image...</p>
                       )}
+                      {uploadingAsset === `hero-video-${index}` && (
+                        <p className="text-xs text-brand-300">Preparing video...</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Slide Preview</p>
                       <div className="overflow-hidden rounded-xl border border-border bg-bg">
                         <div className="relative aspect-[12/5] w-full">
-                          {slide.imageUrl ? (
+                          {slide.videoUrl ? (
+                            <video
+                              src={slide.videoUrl}
+                              poster={slide.imageUrl ?? undefined}
+                              autoPlay
+                              muted
+                              loop={slide.videoLoop !== false}
+                              playsInline
+                              controls
+                              controlsList="nodownload"
+                              disablePictureInPicture
+                              onContextMenu={(event) => event.preventDefault()}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : slide.imageUrl ? (
                             <img src={slide.imageUrl} alt={slide.name} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
@@ -830,14 +967,28 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">First Banner Slide</p>
                 <div className="overflow-hidden rounded-xl border border-border bg-bg">
                   <div className="relative aspect-[12/5] w-full">
-                    {firstSlide?.imageUrl ? (
+                    {firstSlide?.videoUrl ? (
+                      <video
+                        src={firstSlide.videoUrl}
+                        poster={firstSlide.imageUrl ?? undefined}
+                        autoPlay
+                        muted
+                        loop={firstSlide.videoLoop !== false}
+                        playsInline
+                        controls
+                        controlsList="nodownload"
+                        disablePictureInPicture
+                        onContextMenu={(event) => event.preventDefault()}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : firstSlide?.imageUrl ? (
                       <img src={firstSlide.imageUrl} alt={firstSlide.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
                         Add a slide to preview the hero carousel
                       </div>
                     )}
-                    {firstSlide?.imageUrl && (
+                    {(firstSlide?.imageUrl || firstSlide?.videoUrl) && (
                       <>
                         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.12),rgba(9,13,22,0.32))]" />
                         <div className="absolute bottom-4 left-4">
@@ -884,7 +1035,7 @@ export function SiteSettingsForm({ initial }: SiteSettingsFormProps) {
               onClick={save}
               className="w-full rounded-lg bg-brand-600 px-5 py-3 font-semibold text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "Saving..." : dirty ? "Save Site Settings" : "All Changes Saved"}
+              {saving ? "Saving..." : dirty ? "Save & Publish Site Settings" : "All Changes Saved"}
             </button>
             <p className="mt-3 text-xs text-gray-500">
               Site settings save to the live database and appear on the storefront after refresh.

@@ -63,6 +63,12 @@ export function Header({
           </Link>
 
           <nav className="hidden min-w-0 flex-1 items-center justify-center gap-5 xl:flex">
+            <Link
+              href="/mystery-booster-bag"
+              className="block rounded-lg px-3 py-2 text-sm font-bold text-gold transition hover:bg-gold/10 hover:text-white"
+            >
+              Mystery Booster Bag
+            </Link>
             {categories.map((category) => (
               <div
                 key={category.slug}
@@ -172,6 +178,13 @@ export function Header({
               </div>
             </div>
             <div className="max-h-[calc(100dvh-13rem)] overflow-y-auto overscroll-contain bg-[#070b14] px-4 pb-8 pt-4">
+              <Link
+                href="/mystery-booster-bag"
+                onClick={() => setMobileOpen(false)}
+                className="mb-5 block text-sm font-bold uppercase tracking-[0.14em] text-gold"
+              >
+                Mystery Booster Bag
+              </Link>
               {categories.map((category) => (
                 <div key={category.slug} className="mb-4 last:mb-0">
                   <Link

@@ -173,3 +173,87 @@ model SiteSettings {
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
 }
+
+model MysteryBagSettings {
+  id            String   @id @default("mystery-bag")
+  heroImageUrl  String?
+  updatedAt     DateTime @updatedAt
+}
+
+// ---- Mystery Booster Bag optimizer ---------------------------------
+// These records intentionally snapshot every input used by a generated batch.
+// Historical batches must not change when inventory prices are edited later.
+model MysteryPackInventory {
+  id              String   @id @default(cuid())
+  name            String
+  setName         String
+  tcgplayerUrl    String?
+  productId       String?
+  imageUrl        String?
+  quantity        Int      @default(0)
+  unitCostCents   Int
+  marketValueCents Int
+  tier            String   @default("Basic")
+  notes           String?
+  assignments     MysteryBagAssignment[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tier])
+  @@index([setName])
+}
+
+model MysteryBatch {
+  id             String       @id @default(cuid())
+  name           String
+  status         String       @default("draft") // draft | finalized | voided
+  ruleSetJson    String
+  seed           String
+  auditId        String       @unique
+  metricsJson    String
+  claimsJson     String
+  generatedAt    DateTime     @default(now())
+  finalizedAt    DateTime?
+  voidedAt       DateTime?
+  voidReason     String?
+  bags           MysteryBag[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model MysteryBag {
+  id                    String                 @id @default(cuid())
+  batchId               String
+  batch                 MysteryBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  bagNumber             Int
+  code                  String                 @unique
+  totalMarketValueCents Int
+  totalCostCents        Int
+  profitCents           Int
+  outcome               String
+  status                String                 @default("unpacked") // unpacked | packed
+  packedAt              DateTime?
+  assignments           MysteryBagAssignment[]
+
+  @@unique([batchId, bagNumber])
+}
+
+model MysteryBagAssignment {
+  id                String                @id @default(cuid())
+  bagId             String
+  bag                MysteryBag            @relation(fields: [bagId], references: [id], onDelete: Cascade)
+  inventoryId       String
+  inventory         MysteryPackInventory   @relation(fields: [inventoryId], references: [id])
+  quantity          Int                   @default(1)
+  nameSnapshot      String
+  setNameSnapshot   String
+  tcgplayerUrlSnapshot String?
+  imageUrlSnapshot  String?
+  unitCostCents     Int
+  costBasisCents    Int
+  marketValueCents  Int
+
+  @@index([inventoryId])
+}

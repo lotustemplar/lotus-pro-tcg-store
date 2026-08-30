@@ -28,7 +28,8 @@ export function isStorefrontConnectionError(error: unknown) {
   return (
     message.includes("Can't reach database server") ||
     message.includes("Timed out fetching a new connection") ||
-    message.includes("Server has closed the connection")
+    message.includes("Server has closed the connection") ||
+    message.includes("Environment variable not found: DATABASE_URL")
   );
 }
 
@@ -41,4 +42,16 @@ export function logStorefrontFallback(scope: string, error: unknown) {
       message ? `: ${message}` : ""
     }`,
   );
+}
+
+export async function withStorefrontDbFallback<T>(scope: string, fallback: T, operation: () => Promise<T>) {
+  try {
+    return await operation();
+  } catch (error) {
+    if (isStorefrontConnectionError(error)) {
+      logStorefrontFallback(scope, error);
+      return fallback;
+    }
+    throw error;
+  }
 }

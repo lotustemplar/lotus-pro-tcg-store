@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { mysteryBundleDiscountedUnitCents, MYSTERY_BUNDLE_SLUG } from "@/lib/mystery-bundle";
 
 export type CartItem = {
   productId: string;
@@ -19,6 +20,8 @@ type CartContextType = {
   setQuantity: (productId: string, qty: number) => void;
   clear: () => void;
   subtotalCents: number;
+  discountCents: number;
+  discountedSubtotalCents: number;
   itemCount: number;
   isOpen: boolean;
   open: () => void;
@@ -79,6 +82,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const subtotalCents = items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0);
+  const mysteryBundleQuantity = items
+    .filter((item) => item.slug === MYSTERY_BUNDLE_SLUG)
+    .reduce((sum, item) => sum + item.quantity, 0);
+  const discountCents = mysteryBundleQuantity >= 2
+    ? items
+        .filter((item) => item.slug === MYSTERY_BUNDLE_SLUG)
+        .reduce((sum, item) => sum + (item.priceCents - mysteryBundleDiscountedUnitCents(item.priceCents, mysteryBundleQuantity)) * item.quantity, 0)
+    : 0;
+  const discountedSubtotalCents = subtotalCents - discountCents;
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
   return (
@@ -90,6 +102,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setQuantity,
         clear,
         subtotalCents,
+        discountCents,
+        discountedSubtotalCents,
         itemCount,
         isOpen,
         open: () => setIsOpen(true),
