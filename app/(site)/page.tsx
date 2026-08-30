@@ -359,12 +359,18 @@ export default async function HomePage() {
   return (
     <div className="space-y-0">
       <section className="relative left-1/2 w-screen -translate-x-1/2 border-b-0 bg-[#090d16] sm:border-b sm:border-white/8">
-        <div className="relative mx-auto max-w-[1500px] px-0 sm:px-4 sm:py-0">
-          <HeroBannerCarousel slides={settings.heroSlides} brandName={settings.brandName} />
+        <div
+          className={`relative mx-auto max-w-[1500px] px-0 sm:px-4 sm:py-0 ${
+            inStockFeaturedProducts.length > 0 ? "lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-stretch lg:gap-4 lg:px-4 lg:py-4" : ""
+          }`}
+        >
+          <div className="min-w-0">
+            <HeroBannerCarousel slides={settings.heroSlides} brandName={settings.brandName} />
+          </div>
 
           {inStockFeaturedProducts.length > 0 ? (
-            <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10 hidden lg:flex lg:justify-end xl:inset-x-6 xl:bottom-6">
-              <div className="hot-products-card pointer-events-auto w-full max-w-[430px] rounded-[28px] border border-red-300/45 bg-[linear-gradient(180deg,rgba(20,9,8,0.78),rgba(7,10,18,0.96))] p-4 backdrop-blur-xl">
+            <div className="hidden lg:flex lg:min-h-full lg:justify-end">
+              <div className="hot-products-card w-full max-w-[420px] rounded-[28px] border border-red-300/45 bg-[linear-gradient(180deg,rgba(20,9,8,0.78),rgba(7,10,18,0.96))] p-4 backdrop-blur-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-100 drop-shadow-[0_0_10px_rgba(251,146,60,0.42)]">
