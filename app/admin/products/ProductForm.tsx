@@ -10,6 +10,12 @@ import { applyTrackedTcgplayerPricing } from "@/lib/pricing";
 
 type ImageRow = { url: string; altText: string };
 
+function trimToNull(value: string | null | undefined) {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 type TcgplayerImportResponse = {
   autoUpdatePrice: boolean;
   categoryId: string;
@@ -344,9 +350,24 @@ export function ProductForm({
       return;
     }
 
+    const sourceUrl = trimToNull(importUrl) ?? trimToNull(values.sourceUrl);
+    const sourceImageUrl = trimToNull(values.sourceImageUrl);
+    const images = values.images
+      .map((img) => ({
+        url: img.url.trim(),
+        altText: img.altText.trim(),
+      }))
+      .filter((img) => img.url.length > 0);
     const payload = {
       ...values,
-      images: values.images.filter((img) => img.url.trim().length > 0),
+      sourceUrl,
+      sourceImageUrl,
+      images:
+        images.length > 0
+          ? images
+          : sourceImageUrl
+            ? [{ url: sourceImageUrl, altText: values.name.trim() || "Product image" }]
+            : [],
     };
 
     const res = await fetch(
@@ -387,7 +408,11 @@ export function ProductForm({
         <div className="flex flex-col gap-3 lg:flex-row">
           <input
             value={importUrl}
-            onChange={(event) => setImportUrl(event.target.value)}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setImportUrl(nextValue);
+              update("sourceUrl", trimToNull(nextValue));
+            }}
             placeholder="https://www.tcgplayer.com/product/..."
             className="flex-1 rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
           />
@@ -411,12 +436,38 @@ export function ProductForm({
               <p className="text-sm text-gray-200">TCGplayer</p>
               <p className="text-sm text-gray-400">{values.sourceSetName || "Set unavailable"}</p>
               <p className="text-sm text-gray-400">{values.sourceProductType || "Type unavailable"}</p>
+              <div className="pt-2">
+                <label className="mb-1 block text-xs uppercase tracking-[0.2em] text-gray-500">
+                  Saved product link
+                </label>
+                <input
+                  value={values.sourceUrl ?? ""}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setImportUrl(nextValue);
+                    update("sourceUrl", trimToNull(nextValue));
+                  }}
+                  placeholder="https://www.tcgplayer.com/product/..."
+                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.25em] text-brand-300">Tracked Price</p>
               <p className="text-lg font-semibold text-white">
                 {values.sourcePriceCents != null ? formatCents(values.sourcePriceCents) : "Unavailable"}
               </p>
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-[0.2em] text-gray-500">
+                  Saved image URL
+                </label>
+                <input
+                  value={values.sourceImageUrl ?? ""}
+                  onChange={(event) => update("sourceImageUrl", trimToNull(event.target.value))}
+                  placeholder="https://product-images.tcgplayer.com/..."
+                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                />
+              </div>
               <label className="flex items-center gap-2 text-sm text-gray-300">
                 <input
                   type="checkbox"

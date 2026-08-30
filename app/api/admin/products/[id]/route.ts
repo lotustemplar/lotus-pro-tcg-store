@@ -46,6 +46,25 @@ function emptyStringToNull(value: string | null | undefined) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeImages(
+  images: z.infer<typeof productSchema>["images"],
+  fallbackImageUrl: string | null,
+  productName: string
+) {
+  const normalizedImages = images
+    .map((image) => ({
+      url: image.url.trim(),
+      altText: image.altText.trim(),
+    }))
+    .filter((image) => image.url.length > 0);
+
+  if (normalizedImages.length > 0) {
+    return normalizedImages;
+  }
+
+  return fallbackImageUrl ? [{ url: fallbackImageUrl, altText: productName.trim() || "Product image" }] : [];
+}
+
 function normalizeProductInput(data: z.infer<typeof productSchema>) {
   const normalized = normalizeFeaturedPlacement({
     ...data,
@@ -59,6 +78,7 @@ function normalizeProductInput(data: z.infer<typeof productSchema>) {
     seoTitle: emptyStringToNull(data.seoTitle),
     seoDescription: emptyStringToNull(data.seoDescription),
     seoKeywords: emptyStringToNull(data.seoKeywords),
+    images: normalizeImages(data.images, emptyStringToNull(data.sourceImageUrl), data.name),
   });
 
   if (normalized.sourceMarketplace === "tcgplayer") {
