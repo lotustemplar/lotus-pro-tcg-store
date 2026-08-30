@@ -8,8 +8,21 @@ export function getDiscountAmountCents(sourcePriceCents: number) {
   );
 }
 
+export function roundDownStorePriceTo97Cents(priceCents: number) {
+  const normalizedPriceCents = Math.max(0, Math.floor(priceCents));
+  const wholeDollars = Math.floor(normalizedPriceCents / 100);
+  const currentDollarCandidate = wholeDollars * 100 + 97;
+
+  if (currentDollarCandidate <= normalizedPriceCents) {
+    return currentDollarCandidate;
+  }
+
+  return Math.max(0, (wholeDollars - 1) * 100 + 97);
+}
+
 export function getDiscountedStorePriceCents(sourcePriceCents: number) {
-  return Math.max(0, sourcePriceCents - getDiscountAmountCents(sourcePriceCents));
+  const discountedPriceCents = Math.max(0, sourcePriceCents - getDiscountAmountCents(sourcePriceCents));
+  return roundDownStorePriceTo97Cents(discountedPriceCents);
 }
 
 export function applyTrackedTcgplayerPricing({
