@@ -114,6 +114,9 @@ type BulkCategoryState = {
   categoryId: string;
 };
 
+type ProductSortKey = "set" | "name" | "category" | "price" | "quantity" | "autoPrice" | "visibility";
+type ProductSortDirection = "asc" | "desc";
+
 function cloneProducts(products: AdminProduct[]) {
   return products.map((product) => ({ ...product }));
 }
@@ -208,6 +211,10 @@ export function ProductsManager({
   const [groupCategoryFilters, setGroupCategoryFilters] = useState<Record<string, string>>(() =>
     Object.fromEntries(topLevels.map((topLevel) => [topLevel.id, "all"])),
   );
+  const [sortState, setSortState] = useState<{ key: ProductSortKey; direction: ProductSortDirection }>({
+    key: "name",
+    direction: "asc",
+  });
   const [bulkCategory, setBulkCategory] = useState<BulkCategoryState>(() => {
     const firstTopLevel = topLevels[0];
     const firstCategory = firstTopLevel
@@ -246,12 +253,12 @@ export function ProductsManager({
     });
 
   const groupedProducts = topLevels.map((topLevel) => {
-    const allItems = products
-      .filter((product) => {
+    const allItems = sortProducts(
+      products.filter((product) => {
         const category = leafCategories.find((entry) => entry.id === product.categoryId);
         return category?.topLevelId === topLevel.id;
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+    );
     const categoryFilter = groupCategoryFilters[topLevel.id] ?? "all";
     const items =
       categoryFilter === "all"
@@ -423,6 +430,65 @@ export function ProductsManager({
 
   function categoryName(categoryId: string) {
     return leafCategories.find((category) => category.id === categoryId)?.name ?? "Unknown";
+  }
+
+  function autoPriceLabel(product: AdminProduct) {
+    if (product.sourceMarketplace !== "tcgplayer") return "N/A";
+    return product.autoUpdatePrice ? "Live" : "Manual";
+  }
+
+  function visibilityLabel(product: AdminProduct) {
+    if (isExclusiveSaleFeaturedOrder(product.featuredOrder)) return product.isActive ? "Exclusive Active" : "Exclusive Hidden";
+    if (product.featuredOnHome) return product.isActive ? "Home Active" : "Home Hidden";
+    return product.isActive ? "Catalog Active" : "Catalog Hidden";
+  }
+
+  function compareText(left: string, right: string) {
+    return left.localeCompare(right, undefined, { sensitivity: "base", numeric: true });
+  }
+
+  function sortProducts(items: AdminProduct[]) {
+    const direction = sortState.direction === "asc" ? 1 : -1;
+
+    return [...items].sort((left, right) => {
+      const result = (() => {
+        switch (sortState.key) {
+          case "set":
+            return compareText(left.sourceSetName || "Manual / No set", right.sourceSetName || "Manual / No set");
+          case "name":
+            return compareText(left.name, right.name);
+          case "category":
+            return compareText(categoryName(left.categoryId), categoryName(right.categoryId));
+          case "price":
+            return left.priceCents - right.priceCents;
+          case "quantity":
+            return left.quantity - right.quantity;
+          case "autoPrice":
+            return compareText(autoPriceLabel(left), autoPriceLabel(right));
+          case "visibility":
+            return compareText(visibilityLabel(left), visibilityLabel(right));
+        }
+      })();
+
+      if (result !== 0) {
+        return result * direction;
+      }
+
+      return compareText(left.name, right.name);
+    });
+  }
+
+  function toggleSort(key: ProductSortKey) {
+    setSortState((current) =>
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    );
+  }
+
+  function sortBadge(key: ProductSortKey) {
+    if (sortState.key !== key) return "A-Z";
+    return sortState.direction === "asc" ? "A-Z" : "Z-A";
   }
 
   function toggleSelected(id: string, checked: boolean) {
@@ -1100,13 +1166,76 @@ export function ProductsManager({
                       <span className="sr-only">Select</span>
                     </th>
                     <th className="w-24 px-3 py-3">Preview</th>
-                    <th className="px-4 py-3">Set</th>
-                    <th className="px-4 py-3">Product Name</th>
-                    <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">Price</th>
-                    <th className="px-4 py-3">Quantity</th>
-                    <th className="px-4 py-3">Auto Price</th>
-                    <th className="px-4 py-3">Visibility</th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("set")}
+                        className="flex items-center gap-2 font-semibold text-gray-300 transition hover:text-white"
+                      >
+                        <span>Set</span>
+                        <span className="text-[10px] uppercase tracking-[0.16em] text-brand-300">{sortBadge("set")}</span>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("name")}
+                        className="flex items-center gap-2 font-semibold text-gray-300 transition hover:text-white"
+                      >
+                        <span>Product Name</span>
+                        <span className="text-[10px] uppercase tracking-[0.16em] text-brand-300">{sortBadge("name")}</span>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("category")}
+                        className="flex items-center gap-2 font-semibold text-gray-300 transition hover:text-white"
+                      >
+                        <span>Category</span>
+                        <span className="text-[10px] uppercase tracking-[0.16em] text-brand-300">{sortBadge("category")}</span>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("price")}
+                        className="flex items-center gap-2 font-semibold text-gray-300 transition hover:text-white"
+                      >
+                        <span>Price</span>
+                        <span className="text-[10px] uppercase tracking-[0.16em] text-brand-300">{sortBadge("price")}</span>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("quantity")}
+                        className="flex items-center gap-2 font-semibold text-gray-300 transition hover:text-white"
+                      >
+                        <span>Quantity</span>
+                        <span className="text-[10px] uppercase tracking-[0.16em] text-brand-300">{sortBadge("quantity")}</span>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("autoPrice")}
+                        className="flex items-center gap-2 font-semibold text-gray-300 transition hover:text-white"
+                      >
+                        <span>Auto Price</span>
+                        <span className="text-[10px] uppercase tracking-[0.16em] text-brand-300">{sortBadge("autoPrice")}</span>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("visibility")}
+                        className="flex items-center gap-2 font-semibold text-gray-300 transition hover:text-white"
+                      >
+                        <span>Visibility</span>
+                        <span className="text-[10px] uppercase tracking-[0.16em] text-brand-300">{sortBadge("visibility")}</span>
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1162,7 +1291,6 @@ export function ProductsManager({
                             </p>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                               <p>{isTracked ? "TCGplayer tracked" : "Manual product"}</p>
-                              <p>Sorted A-Z by product name</p>
                               <p>
                                 <Link
                                   href={`/admin/products/${product.id}`}
