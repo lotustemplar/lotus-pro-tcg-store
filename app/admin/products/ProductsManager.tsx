@@ -1093,7 +1093,7 @@ export function ProductsManager({
             </summary>
 
             <div className="admin-scrollbar max-w-full overflow-x-scroll overscroll-x-contain border-t border-border pb-4 [scrollbar-gutter:stable]">
-              <table className="w-full min-w-[1440px] table-fixed text-left text-sm">
+              <table className="w-full min-w-[1420px] text-left text-sm">
                 <thead className="bg-bg/70 text-gray-400">
                   <tr>
                     <th className="w-12 px-2 py-3 text-center">
@@ -1101,7 +1101,7 @@ export function ProductsManager({
                     </th>
                     <th className="w-24 px-3 py-3">Preview</th>
                     <th className="px-4 py-3">Set</th>
-                    <th className="px-4 py-3">Product</th>
+                    <th className="px-4 py-3">Product Name</th>
                     <th className="px-4 py-3">Category</th>
                     <th className="px-4 py-3">Price</th>
                     <th className="px-4 py-3">Quantity</th>
@@ -1156,21 +1156,22 @@ export function ProductsManager({
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <input
-                            value={product.name}
-                            onChange={(event) => setProductField(product.id, "name", event.target.value)}
-                            className="w-full min-w-[260px] rounded-md border border-border bg-bg px-3 py-2 text-white outline-none focus:border-brand-500"
-                          />
-                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                            <p>{isTracked ? "TCGplayer tracked" : "Manual product"}</p>
-                            <p>
-                              <Link
-                                href={`/admin/products/${product.id}`}
-                                className="font-semibold text-brand-300 hover:text-brand-200 hover:underline"
-                              >
-                                Open full editor
-                              </Link>
+                          <div className="min-w-[320px] max-w-[420px] space-y-2">
+                            <p className="text-sm font-medium leading-5 text-white break-words">
+                              {product.name}
                             </p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                              <p>{isTracked ? "TCGplayer tracked" : "Manual product"}</p>
+                              <p>Sorted A-Z by product name</p>
+                              <p>
+                                <Link
+                                  href={`/admin/products/${product.id}`}
+                                  className="font-semibold text-brand-300 hover:text-brand-200 hover:underline"
+                                >
+                                  Open full editor
+                                </Link>
+                              </p>
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
