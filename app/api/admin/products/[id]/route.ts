@@ -381,11 +381,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
       id: true,
       name: true,
       slug: true,
-      _count: {
-        select: {
-          orderItems: true,
-        },
-      },
       category: {
         select: {
           slug: true,
@@ -401,53 +396,27 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!existing) return NextResponse.json({ error: "Product not found." }, { status: 404 });
 
   try {
-    if (existing._count.orderItems > 0) {
-      const archived = await prisma.product.update({
-        where: { id: params.id },
-        data: getArchivedDeletedProductData(),
-        select: {
-          id: true,
-          name: true,
-          priceCents: true,
-          sourceMarketplace: true,
-          sourceSetName: true,
-          sourceProductType: true,
-          sourcePriceCents: true,
-          autoUpdatePrice: true,
-          lastSyncedAt: true,
-          lastSyncError: true,
-          quantity: true,
-          featuredOnHome: true,
-          featuredOrder: true,
-          isActive: true,
-          categoryId: true,
-        },
-      });
-
-      try {
-        revalidateCatalogCache();
-        await submitIndexNowUrls([
-          getHomepageUrl(),
-          getProductUrl(existing.slug),
-          getCategoryUrl(existing.category),
-        ]);
-      } catch (followUpError) {
-        console.error("Product archive follow-up failed", {
-          productId: params.id,
-          message: followUpError instanceof Error ? followUpError.message : String(followUpError),
-        });
-      }
-
-      return NextResponse.json({
-        ok: true,
-        archived: true,
-        message:
-          "This product has past orders, so it was archived instead of being permanently deleted.",
-        product: toAdminProductPayload(archived),
-      });
-    }
-
-    await prisma.product.delete({ where: { id: params.id } });
+    const archived = await prisma.product.update({
+      where: { id: params.id },
+      data: getArchivedDeletedProductData(),
+      select: {
+        id: true,
+        name: true,
+        priceCents: true,
+        sourceMarketplace: true,
+        sourceSetName: true,
+        sourceProductType: true,
+        sourcePriceCents: true,
+        autoUpdatePrice: true,
+        lastSyncedAt: true,
+        lastSyncError: true,
+        quantity: true,
+        featuredOnHome: true,
+        featuredOrder: true,
+        isActive: true,
+        categoryId: true,
+      },
+    });
 
     try {
       revalidateCatalogCache();
@@ -465,11 +434,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json({
       ok: true,
-      deleted: true,
-      message: `Deleted ${existing.name}.`,
+      archived: true,
+      message: `${existing.name} was removed from the active catalog.`,
+      product: toAdminProductPayload(archived),
     });
   } catch (error) {
-
     console.error("Product delete failed", {
       productId: params.id,
       code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined,

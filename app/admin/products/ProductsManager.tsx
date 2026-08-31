@@ -505,7 +505,7 @@ export function ProductsManager({
   async function deleteOne(id: string) {
     const product = productsById.get(id);
     if (!product) return;
-    if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) return;
+    if (!confirm(`Remove "${product.name}" from the active catalog? This hides it from the store and admin list.`)) return;
 
     clearMessage();
     setSavingIds((current) => Array.from(new Set([...current, id])));
@@ -527,14 +527,12 @@ export function ProductsManager({
       setSavedProducts((current) => current.filter((entry) => entry.id !== id));
       setMessage({
         type: "success",
-        text:
-          data.message ??
-          `${product.name} has past orders, so it was archived instead of being permanently deleted.`,
+        text: data.message ?? `${product.name} was removed from the active catalog.`,
       });
     } else {
       setProducts((current) => current.filter((entry) => entry.id !== id));
       setSavedProducts((current) => current.filter((entry) => entry.id !== id));
-      setMessage({ type: "success", text: data.message ?? `Deleted ${product.name}.` });
+      setMessage({ type: "success", text: data.message ?? `Removed ${product.name} from the active catalog.` });
     }
 
     setSelectedIds((current) => current.filter((value) => value !== id));

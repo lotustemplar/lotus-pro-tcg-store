@@ -53,34 +53,17 @@ export async function POST(req: NextRequest) {
         where: { id: { in: parsed.data.productIds } },
         select: {
           id: true,
-          _count: {
-            select: {
-              orderItems: true,
-            },
-          },
         },
       });
-      const deletableIds = products.filter((product) => product._count.orderItems === 0).map((product) => product.id);
-      const archivedIds = products.filter((product) => product._count.orderItems > 0).map((product) => product.id);
+      const archivedIds = products.map((product) => product.id);
 
       try {
-        const result = await prisma.$transaction(async (tx) => {
-          const deleted =
-            deletableIds.length > 0
-              ? await tx.product.deleteMany({
-                  where: { id: { in: deletableIds } },
-                })
-              : { count: 0 };
-
-          if (archivedIds.length > 0) {
-            await tx.product.updateMany({
-              where: { id: { in: archivedIds } },
-              data: getArchivedDeletedProductData(),
-            });
-          }
-
-          return { deletedCount: deleted.count, archivedIds };
-        });
+        if (archivedIds.length > 0) {
+          await prisma.product.updateMany({
+            where: { id: { in: archivedIds } },
+            data: getArchivedDeletedProductData(),
+          });
+        }
 
         try {
           revalidateCatalogCache();
@@ -94,13 +77,10 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
           ok: true,
-          count: result.deletedCount,
-          deletedIds: deletableIds,
-          archivedIds: result.archivedIds,
-          message:
-            result.archivedIds.length > 0
-              ? `Deleted ${result.deletedCount} product(s). Archived ${result.archivedIds.length} product(s) that are tied to past orders.`
-              : undefined,
+          count: archivedIds.length,
+          deletedIds: [],
+          archivedIds,
+          message: `Removed ${archivedIds.length} product(s) from the active catalog.`,
         });
       } catch (error) {
         console.error("Bulk product delete failed", {

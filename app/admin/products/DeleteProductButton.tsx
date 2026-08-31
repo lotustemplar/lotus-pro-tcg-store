@@ -11,7 +11,7 @@ export function DeleteProductButton({ id, name }: { id: string; name: string }) 
     <button
       disabled={busy}
       onClick={async () => {
-        if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+        if (!confirm(`Remove "${name}" from the active catalog? This hides it from the store and admin list.`)) return;
         setBusy(true);
         const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
         const data = await res.json().catch(() => ({}));
