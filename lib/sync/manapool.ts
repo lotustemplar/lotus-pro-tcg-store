@@ -33,8 +33,8 @@ export async function applySealedDelta(productId: string, delta: number) {
   return { before: cur.quantity, after: quantity };
 }
 
-export async function listSealedInventory(): Promise<{ productId: string; tcgsku: number | null; quantity: number; name: string }[]> {
-  const out: { productId: string; tcgsku: number | null; quantity: number; name: string }[] = [];
+export async function listSealedInventory(): Promise<{ productId: string; tcgsku: number | null; tcgplayerId: number | null; quantity: number; name: string }[]> {
+  const out: { productId: string; tcgsku: number | null; tcgplayerId: number | null; quantity: number; name: string }[] = [];
   let cursor: string | null = null;
   for (let i = 0; i < 50; i++) {
     const url = new URL(`${BASE}/seller/inventory`);
@@ -45,7 +45,7 @@ export async function listSealedInventory(): Promise<{ productId: string; tcgsku
     const j = await res.json();
     for (const it of j.inventory ?? []) {
       if (it.product_type !== "mtg_sealed") continue;
-      out.push({ productId: it.product_id, tcgsku: it.product?.tcgplayer_sku ?? it.tcgsku ?? null, quantity: Number(it.quantity ?? 0), name: it.product?.name ?? it.product?.single?.name ?? it.product?.sealed?.name ?? "" });
+      out.push({ productId: it.product_id, tcgsku: it.product?.tcgplayer_sku ?? it.tcgsku ?? null, tcgplayerId: it.product?.sealed?.tcgplayer_id ?? it.product?.tcgplayer_id ?? null, quantity: Number(it.quantity ?? 0), name: it.product?.name ?? it.product?.single?.name ?? it.product?.sealed?.name ?? "" });
     }
     cursor = j.pagination?.next_cursor ?? j.next_cursor ?? null;
     if (!cursor) break;
