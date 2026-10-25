@@ -31,15 +31,22 @@ const getCachedTopCategories = unstable_cache(
   },
 );
 
+/** Sealed-only store: hide singles, Commander/precon deck and mystery bag categories from navigation. */
+export const NON_SEALED_CATEGORY = /single|commander|\bdecks?\b|mystery/i;
+
+export function isSealedCategory(category: { name: string; slug: string }) {
+  return !NON_SEALED_CATEGORY.test(category.name) && !NON_SEALED_CATEGORY.test(category.slug.replace(/-/g, " "));
+}
+
 export async function getNavCategories(): Promise<NavCategory[]> {
   try {
     const tops = await getCachedTopCategories();
 
-    return tops.map((t: TopCategoryRow) => ({
+    return tops.filter(isSealedCategory).map((t: TopCategoryRow) => ({
       name: t.name,
       slug: t.slug,
       navStyle: t.navStyle,
-      subs: t.children.map((c: { name: string; slug: string }) => ({ name: c.name, slug: c.slug })),
+      subs: t.children.filter(isSealedCategory).map((c: { name: string; slug: string }) => ({ name: c.name, slug: c.slug })),
     }));
   } catch (error) {
     if (isStorefrontConnectionError(error)) {

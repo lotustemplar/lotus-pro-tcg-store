@@ -9,7 +9,7 @@ import {
   toCardProps,
   type CategorySortOption,
 } from "@/lib/products";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getStorefrontSiteSettings } from "@/lib/site-settings";
 import { buildSocialMetadata } from "@/lib/metadata";
 import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
@@ -31,7 +31,7 @@ export async function generateMetadata({
 }: {
   params: { topSlug: string };
 }): Promise<Metadata> {
-  const [cat, settings] = await Promise.all([getTopCategory(params.topSlug), getSiteSettings()]);
+  const [cat, settings] = await Promise.all([getTopCategory(params.topSlug), getStorefrontSiteSettings()]);
   if (!cat) return {};
   const title = cat.name;
   const description = `Shop ${cat.name} sealed product, boxes, packs, and more at ${settings.brandName}.`;

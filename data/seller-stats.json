@@ -1,0 +1,15 @@
+{
+  "_note": "Fallback seller stats shown when the live fetch fails. Update values + updatedAt weekly; keep numbers > 0.",
+  "updatedAt": "2026-10-24",
+  "manapool": {
+    "url": "https://manapool.com/shop/lotusprotcg",
+    "averageRating": 4.98,
+    "ratings365d": 642,
+    "salesAllTime": 3796
+  },
+  "tcgplayer": {
+    "url": "https://www.tcgplayer.com/sellers/LotusProTCG/25bd25a8",
+    "ratingPercent": 100,
+    "sales": "10000+"
+  }
+}
