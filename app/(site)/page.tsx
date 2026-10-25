@@ -1,3 +1,4 @@
+import { StarTrekPreorderSection } from "@/components/StarTrekPreorderSection";
 import Image from "next/image";
 import Link from "next/link";
 import { Carousel } from "@/components/Carousel";
@@ -9,6 +10,7 @@ import {
 } from "@/components/RotatingFeaturedProducts";
 import {
   getFeaturedProducts,
+  getStarTrekPreorderProducts,
   getHomeCategoryPreviews,
   toCardProps,
 } from "@/lib/products";
@@ -344,6 +346,7 @@ export default async function HomePage() {
     getStorefrontSiteSettings(),
     getHomeCategoryPreviews(5),
   ]);
+  const starTrekProducts = await getStarTrekPreorderProducts();
   const inStockFeaturedProducts = featured.filter((product) => product.quantity > 0);
   const exclusiveFeaturedProduct =
     inStockFeaturedProducts.find((product) => isExclusiveSaleFeaturedOrder(product.featuredOrder)) ?? null;
@@ -447,35 +450,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="featured-right-now" className="py-2">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-3xl font-medium text-white">{settings.featuredSectionTitle}</h2>
-          <div className="hidden items-center gap-2 md:flex">
-            <Link
-              href={settings.heroSecondaryHref}
-              className="rounded-md border border-white/10 px-4 py-2 text-sm text-gray-300 hover:bg-white/[0.04] hover:text-white"
-            >
-              View All
-            </Link>
-          </div>
-        </div>
-
-        {regularFeaturedProducts.length > 0 ? (
-          <>
-            <div className="hidden xl:block">
-              <RotatingFeaturedShelf products={regularFeaturedProducts} />
-            </div>
-
-            <div className="xl:hidden">
-              <Carousel products={carouselProducts} featuredStockOverlay />
-            </div>
-          </>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-white/12 bg-white/[0.02] px-5 py-8 text-center text-gray-400">
-            New sealed product is on the way. Check back soon.
-          </div>
-        )}
-      </section>
+      <StarTrekPreorderSection products={starTrekProducts} />
 
       <FeedbackTestimonialsSection />
     </div>
