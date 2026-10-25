@@ -122,6 +122,7 @@ SELECT
 FROM "_legacy_pending" o
 JOIN "OrderItem" oi ON oi."orderId" = o."id";
 
-DELETE FROM "OrderItem" WHERE "orderId" IN (SELECT "id" FROM "_legacy_pending");
-DELETE FROM "Order" WHERE "id" IN (SELECT "id" FROM "_legacy_pending");
+-- Production has a prevent_order_delete trigger (20260827221500_protect_catalog_deletes), so the old
+-- rows are archived, not deleted: status becomes 'archived_checkout'. Admin Orders only lists paid/finalized orders.
+UPDATE "Order" SET "status" = 'archived_checkout' WHERE "id" IN (SELECT "id" FROM "_legacy_pending");
 DROP TABLE "_legacy_pending";
