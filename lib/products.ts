@@ -277,3 +277,24 @@ export async function getProductBySlug(slug: string) {
     },
   )();
 }
+
+export async function getStarTrekPreorderProducts(): Promise<ProductCardData[]> {
+  try {
+    return await unstable_cache(
+      async () =>
+        prisma.product.findMany({
+          where: { isActive: true, name: { contains: "Star Trek", mode: "insensitive" } },
+          orderBy: [{ quantity: "desc" }, { priceCents: "asc" }],
+          include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+        }),
+      ["star-trek-preorder"],
+      { revalidate: STORE_CATALOG_REVALIDATE_SECONDS, tags: [STORE_CACHE_TAGS.products] },
+    )();
+  } catch (error) {
+    if (isStorefrontConnectionError(error)) {
+      logStorefrontFallback("star trek preorder", error);
+      return [];
+    }
+    throw error;
+  }
+}
