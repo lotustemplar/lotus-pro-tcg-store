@@ -11,6 +11,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
+    "reconcile:sealed": "tsx scripts/sealed-reconcile.ts",
+    "test": "tsx --test lib/*.test.ts lib/sync/*.test.ts",
     "sync:tcgplayer": "tsx scripts/tcgplayer-price-sync.ts",
     "submit:indexnow": "tsx scripts/submit-indexnow.ts",
     "postinstall": "prisma generate"

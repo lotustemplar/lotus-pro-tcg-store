@@ -5,6 +5,7 @@ import { calculateShippingCents } from "@/lib/shipping";
 import { MYSTERY_BUNDLE_SKU, mysteryBundleDiscountedUnitCents } from "@/lib/mystery-bundle";
 import { z } from "zod";
 import Stripe from "stripe";
+import { encodeCart } from "@/lib/sync/cart-metadata";
 
 const schema = z.object({
   items: z
@@ -15,6 +16,7 @@ const schema = z.object({
       })
     )
     .min(1),
+  visitorSessionId: z.string().min(8).max(64).optional(),
 });
 
 type CheckoutProduct = {
@@ -89,24 +91,6 @@ export async function POST(req: NextRequest) {
   const containsMysteryBundle = chargedLineItems.some((item) => item.sku === MYSTERY_BUNDLE_SKU);
   const shippingCents = calculateShippingCents(subtotalCents, { excludeFreeShipping: containsMysteryBundle });
 
-  const order = await prisma.order.create({
-    data: {
-      email: "pending@checkout",
-      status: "pending",
-      subtotalCents,
-      shippingCents,
-      totalCents: subtotalCents + shippingCents,
-      items: {
-        create: chargedLineItems.map((i) => ({
-          productId: i.productId,
-          nameSnapshot: i.name,
-          priceCents: i.priceCents,
-          quantity: i.quantity,
-        })),
-      },
-    },
-  });
-
   const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   try {
@@ -141,15 +125,28 @@ export async function POST(req: NextRequest) {
             ]
           : []),
       ],
-      metadata: { orderId: order.id },
-      success_url: `${origin}/success?order=${order.id}`,
-      cancel_url: `${origin}/cancel?order=${order.id}`,
+      // No Order row yet: the Stripe webhook creates it only after payment succeeds.
+      metadata: {
+        ...encodeCart(chargedLineItems.map((i) => ({ productId: i.productId, quantity: i.quantity, priceCents: i.priceCents }))),
+        subtotalCents: String(subtotalCents),
+        shippingCents: String(shippingCents),
+      },
+      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/cancel`,
     });
 
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { stripeSessionId: session.id },
-    });
+    if (parsed.data.visitorSessionId) {
+      await prisma.visitorActivity.createMany({
+        data: chargedLineItems.map((i) => ({
+          sessionId: parsed.data.visitorSessionId!,
+          action: "checkout_started",
+          productId: i.productId,
+          quantity: i.quantity,
+          priceCents: i.priceCents,
+          meta: JSON.stringify({ stripeSessionId: session.id }),
+        })),
+      }).catch((e: unknown) => console.error("visitor activity log failed", e));
+    }
 
     return NextResponse.json({ url: session.url });
   } catch (err) {

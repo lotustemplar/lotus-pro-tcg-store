@@ -23,6 +23,8 @@ function statusClasses(status: string) {
 
 export default async function AdminOrdersPage() {
   const orders: OrderRow[] = await prisma.order.findMany({
+    // Finalized orders only. Unpaid Stripe checkouts live under Visitor Activity.
+    where: { email: { not: "pending@checkout" }, status: { notIn: ["pending", "archived_checkout"] } },
     include: { items: true },
     orderBy: { createdAt: "desc" },
     take: 100,
