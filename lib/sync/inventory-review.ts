@@ -30,10 +30,18 @@ export function parseTcgplayerExport(text: string): TcgItem[] {
   return parseCsv(text)
     .filter((r) => /^unopened/i.test(r["Condition"] || ""))
     .map((r) => ({ sku: Number(r["TCGplayer Id"]), name: r["Product Name"], productLine: r["Product Line"], setName: r["Set Name"], quantity: Number(r["Total Quantity"] || 0) }))
-    .filter((r) => Number.isFinite(r.sku));
+    .filter((r) => Number.isFinite(r.sku))
+    .filter((r) => r.quantity > 0);
+}
+
+// Filipe: TCGplayer rows at quantity 0 are meaningless, so they are dropped. A product missing from the
+// TCGplayer data is treated exactly like one at 0 there (falls back to Mana Pool's count).
+export function dropZeroTcgRows(rows: TcgItem[] | null): TcgItem[] | null {
+  return rows ? rows.filter((r) => Number(r.quantity) > 0) : rows;
 }
 
 export function buildInventoryReview(store: StoreItem[], mp: MpItem[] | null, tcg: TcgItem[] | null): ReviewRow[] {
+  tcg = dropZeroTcgRows(tcg);
   const rows: ReviewRow[] = [];
   const usedMp = new Set<string>(); const usedTc = new Set<number>();
   const mpById = new Map((mp ?? []).map((m) => [m.productId, m]));
@@ -74,6 +82,8 @@ export function buildInventoryReview(store: StoreItem[], mp: MpItem[] | null, tc
     if (usedTc.has(t.sku) || t.quantity <= 0) continue;
     rows.push({ productId: null, name: `${t.setName} — ${t.name}`, storeQty: null, manapoolQty: null, tcgplayerQty: t.quantity, proposedQty: null, change: null, status: "not in store", note: `On TCGplayer (${t.productLine}), not in store`, tcgplayerSku: t.sku });
   }
+  // Hide rows that are 0 everywhere (store, TCGplayer, Mana Pool): nothing to review.
+  const visible = rows.filter((r) => !((r.storeQty ?? 0) === 0 && (r.manapoolQty ?? 0) === 0 && (r.tcgplayerQty ?? 0) === 0));
   const order = { change: 0, flag: 1, "not in store": 2, "no listing": 3, same: 4 } as const;
-  return rows.sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name));
+  return visible.sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name));
 }

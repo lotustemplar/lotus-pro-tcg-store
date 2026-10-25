@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { listSealedInventory } from "@/lib/sync/manapool";
-import { buildInventoryReview, parseTcgplayerExport } from "@/lib/sync/inventory-review";
+import { buildInventoryReview, dropZeroTcgRows, parseTcgplayerExport } from "@/lib/sync/inventory-review";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,11 +13,11 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get("tcgplayerCsv");
   let tcg = file && typeof file !== "string" && file.size > 0 ? parseTcgplayerExport(await file.text()) : null;
-  let tcgLabel = tcg ? `${tcg.length} sealed rows from uploaded export` : "no TCGplayer data (send it from the extension or upload the export)";
+  let tcgLabel = tcg ? `${tcg.length} sealed rows in stock from uploaded export` : "no TCGplayer data (send it from the extension or upload the export)";
   if (!tcg) {
     try {
       const snap = await prisma.tcgplayerSnapshot.findFirst({ orderBy: { capturedAt: "desc" } });
-      if (snap) { tcg = JSON.parse(snap.rowsJson); tcgLabel = `TCGplayer data from ${snap.capturedAt.toISOString()} (${snap.rowCount} sealed rows, via extension)`; }
+      if (snap) { tcg = dropZeroTcgRows(JSON.parse(snap.rowsJson)); tcgLabel = `TCGplayer data from ${snap.capturedAt.toISOString()} (${tcg?.length ?? 0} sealed rows in stock, via extension)`; }
     } catch { tcgLabel = "TCGplayer snapshot storage not set up yet (migration pending); upload the export instead"; }
   }
   let mp = null as Awaited<ReturnType<typeof listSealedInventory>> | null; let mpError: string | null = null;
