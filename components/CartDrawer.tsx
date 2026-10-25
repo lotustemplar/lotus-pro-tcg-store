@@ -6,6 +6,7 @@ import { formatCents } from "@/lib/format";
 import { calculateShippingCents, remainingForFreeShippingCents } from "@/lib/shipping";
 import { MYSTERY_BUNDLE_SLUG } from "@/lib/mystery-bundle";
 import { useState } from "react";
+import { getVisitorSessionId } from "@/lib/visitor";
 
 export function CartDrawer() {
   const { items, isOpen, close, removeItem, setQuantity, subtotalCents, discountCents, discountedSubtotalCents, clear } = useCart();
@@ -21,7 +22,7 @@ export function CartDrawer() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, visitorSessionId: getVisitorSessionId() }),
       });
       const data = await res.json();
       if (data.url) {

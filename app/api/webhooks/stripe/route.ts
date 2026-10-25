@@ -7,6 +7,8 @@ import { buildOrderConfirmationEmail } from "@/lib/order-confirmation-email";
 import { buildOrderSaleNotificationEmail } from "@/lib/order-sale-notification-email";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
 import Stripe from "stripe";
+import { decodeCart } from "@/lib/sync/cart-metadata";
+import { recordSale } from "@/lib/sync/engine";
 
 type OrderItemRow = {
   productId: string;
@@ -95,7 +97,10 @@ export async function POST(req: NextRequest) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.metadata?.orderId;
+    if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
+      return NextResponse.json({ received: true, skipped: "not paid" });
+    }
+    const orderId = await ensurePaidOrder(session);
     if (orderId) {
       const existingOrder = await prisma.order.findUnique({
         where: { id: orderId },
@@ -133,13 +138,10 @@ export async function POST(req: NextRequest) {
                 stripePaymentIntent: nextPaymentIntent,
               },
             }),
-            ...existingOrder.items.map((item: OrderItemRow) =>
-              prisma.product.update({
-                where: { id: item.productId },
-                data: { quantity: { decrement: item.quantity } },
-              }),
-            ),
           ]);
+          for (const item of existingOrder.items) {
+            await recordSale({ source: "store", externalOrderId: orderId, productId: item.productId, quantity: item.quantity });
+          }
           revalidateCatalogCache();
 
           order = {
@@ -286,4 +288,49 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+
+/**
+ * Create the Order only now that Stripe says it is paid (idempotent on stripeSessionId),
+ * decrement store stock and queue Mana Pool / TCGplayer decrements.
+ * Legacy sessions that still carry metadata.orderId fall through to the old pending->paid path.
+ */
+async function ensurePaidOrder(session: Stripe.Checkout.Session): Promise<string | null> {
+  const legacyId = session.metadata?.orderId;
+  if (legacyId) return legacyId;
+  const existing = await prisma.order.findUnique({ where: { stripeSessionId: session.id }, select: { id: true } });
+  if (existing) return existing.id;
+  const lines = decodeCart(session.metadata as Record<string, string>);
+  if (lines.length === 0) return null;
+  const products = await prisma.product.findMany({ where: { id: { in: lines.map((l) => l.productId) } }, select: { id: true, name: true } });
+  const nameOf = new Map(products.map((p) => [p.id, p.name]));
+  const subtotalCents = Number(session.metadata?.subtotalCents ?? lines.reduce((s, l) => s + l.priceCents * l.quantity, 0));
+  const shippingCents = Number(session.metadata?.shippingCents ?? 0);
+  let order;
+  try {
+    order = await prisma.order.create({
+      data: {
+        stripeSessionId: session.id,
+        stripePaymentIntent: typeof session.payment_intent === "string" ? session.payment_intent : null,
+        email: session.customer_details?.email ?? "unknown@checkout",
+        status: "paid",
+        subtotalCents,
+        shippingCents,
+        totalCents: session.amount_total ?? subtotalCents + shippingCents,
+        shippingAddress: serializeShippingSnapshot(session),
+        items: { create: lines.map((l) => ({ productId: l.productId, nameSnapshot: nameOf.get(l.productId) ?? "Product", priceCents: l.priceCents, quantity: l.quantity })) },
+      },
+    });
+  } catch (e) {
+    // Concurrent webhook retry created it first.
+    const again = await prisma.order.findUnique({ where: { stripeSessionId: session.id }, select: { id: true } });
+    if (again) return again.id;
+    throw e;
+  }
+  for (const l of lines) {
+    await recordSale({ source: "store", externalOrderId: order.id, productId: l.productId, quantity: l.quantity });
+  }
+  revalidateCatalogCache();
+  return order.id;
 }

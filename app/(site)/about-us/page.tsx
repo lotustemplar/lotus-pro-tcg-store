@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buildSocialMetadata } from "@/lib/metadata";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getStorefrontSiteSettings } from "@/lib/site-settings";
 import { STORE_CONFIG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
 export const revalidate = STORE_CONFIG_REVALIDATE_SECONDS;
@@ -25,7 +25,7 @@ const COMMUNITY_POINTS = [
 ];
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSiteSettings();
+  const settings = await getStorefrontSiteSettings();
   const title = `About Us`;
   const description =
     "Learn how Lotus Pro TCG grew from a small family-owned passion project into an online TCG store built by collectors, competitors, and lifelong fans of the hobby.";
@@ -44,7 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AboutUsPage() {
-  const settings = await getSiteSettings();
+  const settings = await getStorefrontSiteSettings();
 
   return (
     <div className="space-y-10">

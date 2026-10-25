@@ -1,0 +1,6 @@
+body{width:340px;font:13px system-ui,sans-serif;margin:12px;background:#0f1424;color:#eee}
+h1{font-size:15px;margin:0 0 8px;color:#e6c46a}label{display:block;margin:6px 0;color:#aab}
+input{width:100%;box-sizing:border-box;padding:6px;border-radius:6px;border:1px solid #334;background:#18203a;color:#fff}
+.row{display:flex;gap:8px}.row label{flex:1}.inline{display:inline-block;margin-right:10px}.inline input{width:auto}
+button{width:100%;margin-top:8px;padding:9px;border:0;border-radius:6px;background:#e6c46a;color:#111;font-weight:700;cursor:pointer}
+img{max-width:90px;float:right;margin-left:8px;border-radius:4px}.muted{color:#889}.ok{color:#7ddc8a}.err{color:#ff8080}.foot{margin-top:10px}a{color:#9ab}

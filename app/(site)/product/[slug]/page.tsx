@@ -6,7 +6,7 @@ import { StockBadge } from "@/components/StockBadge";
 import { RestockNotifyForm } from "@/components/RestockNotifyForm";
 import type { Metadata } from "next";
 import { buildSocialMetadata } from "@/lib/metadata";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getStorefrontSiteSettings } from "@/lib/site-settings";
 import { getProductBySlug } from "@/lib/products";
 import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
@@ -15,7 +15,7 @@ export const revalidate = STORE_CATALOG_REVALIDATE_SECONDS;
 type ProductImage = { id: string; url: string; altText: string };
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const [product, settings] = await Promise.all([getProductBySlug(params.slug), getSiteSettings()]);
+  const [product, settings] = await Promise.all([getProductBySlug(params.slug), getStorefrontSiteSettings()]);
   if (!product) return {};
   const title = product.seoTitle || product.name;
   const description = product.seoDescription || product.description.slice(0, 155);

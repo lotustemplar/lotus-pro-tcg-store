@@ -8,7 +8,7 @@ import {
   toCardProps,
   type CategorySortOption,
 } from "@/lib/products";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getStorefrontSiteSettings } from "@/lib/site-settings";
 import { buildSocialMetadata } from "@/lib/metadata";
 import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
@@ -32,7 +32,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const [cat, settings] = await Promise.all([
     getSubCategory(params.topSlug, params.subSlug),
-    getSiteSettings(),
+    getStorefrontSiteSettings(),
   ]);
   if (!cat) return {};
   const title = cat.name;

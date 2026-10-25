@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { HeroSlide } from "@/lib/site-settings";
@@ -47,11 +48,11 @@ export function HeroBannerCarousel({
         <div className="absolute inset-x-0 bottom-0 top-0 flex items-center">
           <div className="mx-auto flex w-full max-w-[1500px] px-4 sm:px-8 lg:px-10">
             <div className="max-w-[760px]">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-brand-200/85 sm:text-xs">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-200 sm:text-sm">
                 {brandName}
               </p>
               <h1 className="mt-3 max-w-[12ch] font-display text-[2rem] font-semibold leading-[0.95] text-white sm:text-[3rem] lg:text-[4.5rem]">
-                Sealed product, premium accessories, and live TCG inventory.
+                Sealed booster boxes, cases and packs.
               </h1>
               <p className="mt-4 max-w-[56ch] text-sm leading-6 text-gray-200/88 sm:text-base sm:leading-7">
                 Browse Magic, Pokemon, One Piece, Riftbound, Weiss Schwarz, and more while fresh
@@ -59,20 +60,20 @@ export function HeroBannerCarousel({
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  href="/mystery-booster-bag"
-                  className="inline-flex rounded-md border border-brand-300/70 bg-black/45 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_0_0_1px_rgba(196,181,253,0.18),0_0_22px_rgba(139,92,246,0.45)] backdrop-blur-sm transition hover:border-white hover:bg-brand-700/40 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_0_28px_rgba(139,92,246,0.58)] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
+                  href="/category/magic-the-gathering"
+                  className="inline-flex rounded-md border border-brand-300/70 bg-black/45 px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] text-white shadow-[0_0_0_1px_rgba(196,181,253,0.18),0_0_22px_rgba(139,92,246,0.45)] backdrop-blur-sm transition hover:border-white hover:bg-brand-700/40 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_0_28px_rgba(139,92,246,0.58)] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
                 >
-                  Buy Mystery Booster
+                  Shop Magic
                 </Link>
                 <Link
                   href="/category/pokemon"
-                  className="inline-flex rounded-md border border-white/15 bg-white/[0.04] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition hover:border-white/35 hover:bg-white/[0.08] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
+                  className="inline-flex rounded-md border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:border-white/35 hover:bg-white/[0.08] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
                 >
                   Shop Pokemon
                 </Link>
                 <Link
                   href="/category/one-piece"
-                  className="inline-flex rounded-md border border-white/15 bg-white/[0.04] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition hover:border-white/35 hover:bg-white/[0.08] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
+                  className="inline-flex rounded-md border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:border-white/35 hover:bg-white/[0.08] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
                 >
                   Shop One Piece
                 </Link>
@@ -91,9 +92,10 @@ export function HeroBannerCarousel({
         style={{ transform: `translateX(-${activeIndex * 100}%)` }}
       >
         {slides.map((slide, index) => {
-          const isMysteryVideoHero = index === 0 && !!slide.videoUrl;
-          const buttonLabel = isMysteryVideoHero ? "BUY MYSTERY BOOSTER BUNDLE" : slide.buttonLabel;
-          const buttonHref = isMysteryVideoHero ? "/mystery-booster-bag" : slide.buttonHref;
+          // Sealed-only store: slides always use their own CTA (no mystery-bundle override).
+          const isMysteryVideoHero = false;
+          const buttonLabel = slide.buttonLabel;
+          const buttonHref = slide.buttonHref;
 
           return (
           <div
@@ -117,10 +119,13 @@ export function HeroBannerCarousel({
                 <source src={slide.videoUrl} type="video/mp4" />
               </video>
             ) : slide.imageUrl ? (
-              <img
+              <Image
                 src={slide.imageUrl}
                 alt={`${brandName} ${slide.name}`}
-                className="absolute inset-0 h-full w-full object-cover object-center sm:object-cover"
+                fill
+                priority={index === 0}
+                sizes="(min-width: 1024px) 1080px, 100vw"
+                className="object-cover object-center"
               />
             ) : null}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,13,22,0.12),rgba(9,13,22,0.28))]" />
@@ -136,7 +141,7 @@ export function HeroBannerCarousel({
                 className={
                   isMysteryVideoHero
                     ? "inline-flex min-w-[280px] items-center justify-center rounded-xl border border-brand-200/80 bg-black/50 px-8 py-5 text-center text-base font-black uppercase tracking-[0.16em] text-white shadow-[0_0_0_1px_rgba(196,181,253,0.24),0_0_34px_rgba(139,92,246,0.62)] backdrop-blur-md transition hover:border-white hover:bg-brand-700/55 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.22),0_0_44px_rgba(139,92,246,0.78)] sm:min-w-[390px] sm:px-12 sm:py-6 sm:text-xl sm:tracking-[0.2em] lg:min-w-[460px] lg:py-7 lg:text-2xl"
-                    : "inline-flex rounded-md border border-brand-300/70 bg-black/45 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_0_0_1px_rgba(196,181,253,0.18),0_0_22px_rgba(139,92,246,0.45)] backdrop-blur-sm transition hover:border-white hover:bg-brand-700/40 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_0_28px_rgba(139,92,246,0.58)] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
+                    : "inline-flex rounded-md border border-brand-300/70 bg-black/45 px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] text-white shadow-[0_0_0_1px_rgba(196,181,253,0.18),0_0_22px_rgba(139,92,246,0.45)] backdrop-blur-sm transition hover:border-white hover:bg-brand-700/40 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_0_28px_rgba(139,92,246,0.58)] sm:px-6 sm:py-3 sm:text-sm sm:tracking-[0.22em]"
                 }
               >
                 {buttonLabel}

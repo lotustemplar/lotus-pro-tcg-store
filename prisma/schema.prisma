@@ -53,6 +53,12 @@ model Product {
   compareAtCents    Int?
   sku               String?        @unique
   quantity          Int            @default(0)
+  tcgplayerSku      Int?           @unique
+  tcgplayerListingName String?
+  manapoolProductId String?        @unique
+  inventoryEvents   InventoryEvent[]
+  channelChanges    ChannelChange[]
+  visitorActivity   VisitorActivity[]
   images            ProductImage[]
   categoryId        String
   category          Category       @relation(fields: [categoryId], references: [id])
@@ -174,86 +180,70 @@ model SiteSettings {
   updatedAt                   DateTime @updatedAt
 }
 
-model MysteryBagSettings {
-  id            String   @id @default("mystery-bag")
-  heroImageUrl  String?
+
+// Storefront visitor actions (cart adds, checkout started). Never card data. Not orders.
+model VisitorActivity {
+  id          String   @id @default(cuid())
+  sessionId   String
+  action      String   // add_to_cart | remove_from_cart | checkout_started | legacy_pending_order
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  quantity    Int      @default(1)
+  priceCents  Int?
+  path        String?
+  meta        String?  // small JSON (e.g. legacy order id, stripe session id)
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([sessionId])
+}
+
+// One sale seen on one channel. Unique per (source, externalOrderId, productId) so replays are no-ops.
+model InventoryEvent {
+  id              String   @id @default(cuid())
+  source          String   // store | manapool | tcgplayer
+  externalOrderId String
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  quantity        Int
+  createdAt       DateTime @default(now())
+  changes         ChannelChange[]
+
+  @@unique([source, externalOrderId, productId])
+}
+
+// A queued quantity change for another channel.
+model ChannelChange {
+  id          String    @id @default(cuid())
+  channel     String    // store | manapool | tcgplayer
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  delta       Int       // negative = remove
+  status      String    @default("pending") // pending | approved | applied | exported | rejected | failed | unmatched
+  eventId     String?
+  event       InventoryEvent? @relation(fields: [eventId], references: [id])
+  note        String?
+  error       String?
+  createdAt   DateTime  @default(now())
+  appliedAt   DateTime?
+
+  @@index([channel, status])
+}
+
+model SyncSettings {
+  id            String   @id @default("sync")
+  manapoolMode  String   @default("approval") // approval | auto
   updatedAt     DateTime @updatedAt
 }
 
-// ---- Mystery Booster Bag optimizer ---------------------------------
-// These records intentionally snapshot every input used by a generated batch.
-// Historical batches must not change when inventory prices are edited later.
-model MysteryPackInventory {
-  id              String   @id @default(cuid())
-  name            String
-  setName         String
-  tcgplayerUrl    String?
-  productId       String?
-  imageUrl        String?
-  quantity        Int      @default(0)
-  unitCostCents   Int
-  marketValueCents Int
-  tier            String   @default("Basic")
-  notes           String?
-  assignments     MysteryBagAssignment[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+// Unmatched sale lines (e.g. TCGplayer email names with no product match).
+model SyncIssue {
+  id         String   @id @default(cuid())
+  source     String
+  externalId String
+  detail     String
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  @@index([tier])
-  @@index([setName])
-}
-
-model MysteryBatch {
-  id             String       @id @default(cuid())
-  name           String
-  status         String       @default("draft") // draft | finalized | voided
-  ruleSetJson    String
-  seed           String
-  auditId        String       @unique
-  metricsJson    String
-  claimsJson     String
-  generatedAt    DateTime     @default(now())
-  finalizedAt    DateTime?
-  voidedAt       DateTime?
-  voidReason     String?
-  bags           MysteryBag[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  @@index([status, createdAt])
-}
-
-model MysteryBag {
-  id                    String                 @id @default(cuid())
-  batchId               String
-  batch                 MysteryBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  bagNumber             Int
-  code                  String                 @unique
-  totalMarketValueCents Int
-  totalCostCents        Int
-  profitCents           Int
-  outcome               String
-  status                String                 @default("unpacked") // unpacked | packed
-  packedAt              DateTime?
-  assignments           MysteryBagAssignment[]
-
-  @@unique([batchId, bagNumber])
-}
-
-model MysteryBagAssignment {
-  id                String                @id @default(cuid())
-  bagId             String
-  bag                MysteryBag            @relation(fields: [bagId], references: [id], onDelete: Cascade)
-  inventoryId       String
-  inventory         MysteryPackInventory   @relation(fields: [inventoryId], references: [id])
-  quantity          Int                   @default(1)
-  nameSnapshot      String
-  setNameSnapshot   String
-  tcgplayerUrlSnapshot String?
-  imageUrlSnapshot  String?
-  unitCostCents     Int
-  costBasisCents    Int
-  marketValueCents  Int
-
-  @@index([inventoryId])
+  @@unique([source, externalId, detail])
 }
