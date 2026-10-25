@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Carousel } from "@/components/Carousel";
-import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
+import { AutumnHeroBanner } from "@/components/AutumnHeroBanner";
 import {
   MobileHeroFeaturedWidget,
   RotatingFeaturedShelf,
@@ -364,7 +364,7 @@ export default async function HomePage() {
           }`}
         >
           <div className="min-w-0">
-            <HeroBannerCarousel slides={settings.heroSlides.filter((slide) => !/myster/i.test(`${slide.buttonLabel ?? ""}`))} brandName={settings.brandName} />
+            <AutumnHeroBanner />
           </div>
 
           {inStockFeaturedProducts.length > 0 ? (

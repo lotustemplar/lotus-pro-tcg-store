@@ -9,6 +9,11 @@ type MpItem = { product_id?: string; product_type?: string; tcgsku?: number | nu
 
 export async function POST(req: NextRequest) {
   const raw = await req.text();
+  // Registration handshake: the secret only exists after Mana Pool answers PUT /webhooks/register,
+  // so acknowledge the verification ping (no side effects) until the secret is configured.
+  if (!process.env.MANAPOOL_WEBHOOK_SECRET && req.headers.get("x-manapool-event") === "verification") {
+    return NextResponse.json({ ok: true });
+  }
   if (!verifyManapoolSignature(raw, req.headers.get("x-manapool-signature"), process.env.MANAPOOL_WEBHOOK_SECRET)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
