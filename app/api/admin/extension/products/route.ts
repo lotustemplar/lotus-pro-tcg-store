@@ -49,7 +49,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, created: false, product: { id: p.id, name: p.name, quantity: p.quantity, priceCents: p.priceCents } });
   }
   const categories = await getAllCategoriesWithParent();
-  const categoryId = findSuggestedCategoryId(categories, { productLineName: d.productLine, productName: d.name, productTypeName: d.productType });
+  let categoryId: string | null = null;
+  try { categoryId = findSuggestedCategoryId(categories, { productLineName: d.productLine, productName: d.name, productTypeName: d.productType }); }
+  catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "No matching category" }, { status: 409 }); }
   if (!categoryId) return NextResponse.json({ error: "No category exists yet; create one in admin first." }, { status: 409 });
   let slug = slugify(d.name); let n = 1;
   while (await prisma.product.findUnique({ where: { slug } })) slug = `${slugify(d.name)}-${++n}`;
