@@ -1,3 +1,4 @@
+import { SyncInventoriesButton } from "./SyncInventoriesButton";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { getAllCategoriesWithParent } from "@/lib/admin";
@@ -119,9 +120,12 @@ export default async function AdminProductsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-3xl font-bold text-white">Products</h1>
-        <Link href="/admin/products/new" className="text-sm text-brand-300 hover:underline">
-          Open full product form
-        </Link>
+        <div className="flex items-center gap-4">
+          <SyncInventoriesButton />
+          <Link href="/admin/products/new" className="text-sm text-brand-300 hover:underline">
+            Open full product form
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-bg-panel px-4 py-3">
