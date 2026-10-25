@@ -10,7 +10,7 @@ export function StarTrekPreorderSection({ products, showHeaderLink = true }: { p
   return (
     <section
       id="star-trek-preorder"
-      className="relative left-1/2 my-4 w-screen -translate-x-1/2 overflow-hidden border-y border-cyan-400/20 py-10"
+      className="relative left-1/2 my-4 w-screen scroll-mt-24 -translate-x-1/2 overflow-hidden border-y border-cyan-400/20 py-10"
       style={{ background: "radial-gradient(ellipse at 50% -10%,rgba(56,189,248,.28),transparent 60%),radial-gradient(ellipse at 90% 110%,rgba(168,85,247,.22),transparent 55%),#03060f" }}
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-80" style={{ backgroundImage: stars, backgroundSize: "320px 320px" }} />
