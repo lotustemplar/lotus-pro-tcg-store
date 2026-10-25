@@ -10,3 +10,4 @@ lotus-pro-decks-store-deploy.zip
 .netlify
 
 .vercel
+*.tsbuildinfo
