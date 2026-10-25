@@ -20,6 +20,34 @@ export function SyncInventoriesButton() {
   const [msg, setMsg] = useState<string | null>(null);
   const [showSame, setShowSame] = useState(false);
 
+  // If the "Add to Lotus Pro" extension (v1.1+) is installed, ask it to pull a fresh TCGplayer snapshot from
+  // Filipe's own Seller Portal session. Resolves with a status line; never blocks if the extension is absent.
+  function refreshFromExtension(): Promise<string | null> {
+    return new Promise((resolve) => {
+      const id = Math.random().toString(36).slice(2);
+      let acked = false;
+      const onMsg = (e: MessageEvent) => {
+        if (e.source !== window || !e.data || e.data.id !== id) return;
+        if (e.data.type === "lotus:tcg-ack") { acked = true; return; }
+        if (e.data.type === "lotus:tcg-result") {
+          window.removeEventListener("message", onMsg);
+          resolve(e.data.ok ? null : `Extension couldn't refresh TCGplayer data: ${e.data.error}. Using the last snapshot (or upload the export).`);
+        }
+      };
+      window.addEventListener("message", onMsg);
+      window.postMessage({ type: "lotus:tcg-request", id }, window.location.origin);
+      setTimeout(() => { if (!acked) { window.removeEventListener("message", onMsg); resolve(null); } }, 1500);
+      setTimeout(() => { window.removeEventListener("message", onMsg); resolve("TCGplayer refresh timed out; using the last snapshot."); }, 180000);
+    });
+  }
+
+  async function syncFromExtension() {
+    setLoading(true); setMsg("Refreshing TCGplayer inventory via the extension…");
+    const warn = await refreshFromExtension();
+    await review();
+    if (warn) setMsg(warn);
+  }
+
   async function review() {
     setLoading(true); setMsg(null);
     try {
@@ -53,7 +81,7 @@ export function SyncInventoriesButton() {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="rounded-md bg-brand-500 px-4 py-2 text-sm font-semibold tracking-wide text-white hover:bg-brand-400">
+      <button onClick={() => { setOpen(true); if (!file) syncFromExtension(); }} className="rounded-md bg-brand-500 px-4 py-2 text-sm font-semibold tracking-wide text-white hover:bg-brand-400">
         SYNC INVENTORIES
       </button>
       {open && (
@@ -88,7 +116,7 @@ export function SyncInventoriesButton() {
             {rows && (
               <>
                 <p className="mb-2 text-xs text-gray-400">
-                  Mana Pool: {sources.manapool} · TCGplayer: {sources.tcgplayer} · {Object.entries(counts).map(([k, v]) => `${k}: ${v}`).join(" · ")}
+                  Mana Pool: {sources.manapool} · TCGplayer: {(sources.tcgplayer || "").replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/, (iso) => new Date(iso).toLocaleString())} · {Object.entries(counts).map(([k, v]) => `${k}: ${v}`).join(" · ")}
                 </p>
                 <div className="max-h-[65vh] overflow-auto rounded-lg border border-border">
                   <table className="w-full text-left text-xs">
