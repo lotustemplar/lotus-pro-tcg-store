@@ -1,8 +1,7 @@
 name: TCGPlayer Price Sync
 
 on:
-  schedule:
-    - cron: "0 */12 * * *"
+  # Schedule removed: replaced by Vercel Cron /api/cron/price-sync (daily, market x0.95 round up to .97)
   workflow_dispatch:
 
 concurrency:

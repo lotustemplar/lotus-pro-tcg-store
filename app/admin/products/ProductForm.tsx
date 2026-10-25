@@ -144,7 +144,7 @@ export function ProductForm({
           sourceProductType: null,
           sourcePriceCents: null,
           sourceImageUrl: null,
-          autoUpdatePrice: false,
+          autoUpdatePrice: true,
           compareAtCents: null,
           sku: "",
           quantity: 0,
@@ -475,7 +475,7 @@ export function ProductForm({
                   onChange={(event) => update("autoUpdatePrice", event.target.checked)}
                   className="h-4 w-4"
                 />
-                Auto-update storefront price every 12 hours
+                Auto price: daily TCGplayer Market −5%, rounded up to .97
               </label>
               <p className="text-xs text-gray-500">
                 Turn this off any time you want to manually override the live TCGplayer price.
