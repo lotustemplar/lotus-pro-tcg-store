@@ -364,7 +364,7 @@ export default async function HomePage() {
           }`}
         >
           <div className="min-w-0">
-            <HeroBannerCarousel slides={settings.heroSlides} brandName={settings.brandName} />
+            <HeroBannerCarousel slides={settings.heroSlides.filter((slide) => !/myster/i.test(`${slide.buttonLabel ?? ""}`))} brandName={settings.brandName} />
           </div>
 
           {inStockFeaturedProducts.length > 0 ? (
