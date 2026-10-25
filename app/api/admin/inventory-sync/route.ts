@@ -12,7 +12,14 @@ export async function POST(req: Request) {
   if (!(await getAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const form = await req.formData().catch(() => null);
   const file = form?.get("tcgplayerCsv");
-  const tcg = file && typeof file !== "string" && file.size > 0 ? parseTcgplayerExport(await file.text()) : null;
+  let tcg = file && typeof file !== "string" && file.size > 0 ? parseTcgplayerExport(await file.text()) : null;
+  let tcgLabel = tcg ? `${tcg.length} sealed rows from uploaded export` : "no TCGplayer data (send it from the extension or upload the export)";
+  if (!tcg) {
+    try {
+      const snap = await prisma.tcgplayerSnapshot.findFirst({ orderBy: { capturedAt: "desc" } });
+      if (snap) { tcg = JSON.parse(snap.rowsJson); tcgLabel = `TCGplayer data from ${snap.capturedAt.toISOString()} (${snap.rowCount} sealed rows, via extension)`; }
+    } catch { tcgLabel = "TCGplayer snapshot storage not set up yet (migration pending); upload the export instead"; }
+  }
   let mp = null as Awaited<ReturnType<typeof listSealedInventory>> | null; let mpError: string | null = null;
   try { mp = await listSealedInventory(); } catch (e) { mpError = e instanceof Error ? e.message : "Mana Pool error"; }
   const store = await prisma.product.findMany({
@@ -21,7 +28,7 @@ export async function POST(req: Request) {
   const rows = buildInventoryReview(store, mp, tcg);
   return NextResponse.json({
     rows,
-    sources: { manapool: mp ? `${mp.length} sealed listings` : `unavailable: ${mpError}`, tcgplayer: tcg ? `${tcg.length} sealed rows from uploaded export` : "no export uploaded" },
+    sources: { manapool: mp ? `${mp.length} sealed listings` : `unavailable: ${mpError}`, tcgplayer: tcgLabel },
     generatedAt: new Date().toISOString(),
   });
 }

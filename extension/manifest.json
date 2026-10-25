@@ -1,19 +1,65 @@
 {
   "manifest_version": 3,
   "name": "Add to Lotus Pro",
-  "version": "1.0.0",
-  "description": "On a TCGplayer product page, add that sealed product to the Lotus Pro TCG store inventory.",
-  "permissions": ["storage", "activeTab"],
+  "version": "1.1.0",
+  "description": "Add TCGplayer sealed products to the Lotus Pro TCG store, and send your TCGplayer sealed inventory (read-only) to the store for Sync Inventories.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "downloads"
+  ],
   "host_permissions": [
     "https://www.tcgplayer.com/product/*",
     "https://mp-search-api.tcgplayer.com/*",
     "https://lotusprotcg.com/*",
     "https://www.lotusprotcg.com/*",
-    "https://*.vercel.app/*"
+    "https://*.vercel.app/*",
+    "https://store.tcgplayer.com/*",
+    "https://sellerportal.tcgplayer.com/*"
   ],
-  "background": { "service_worker": "background.js" },
-  "content_scripts": [{ "matches": ["https://www.tcgplayer.com/product/*"], "js": ["content.js"], "run_at": "document_idle" }],
-  "action": { "default_popup": "popup.html", "default_title": "Add to Lotus Pro", "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" } },
-  "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.tcgplayer.com/product/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://lotusprotcg.com/admin/*",
+        "https://www.lotusprotcg.com/admin/*",
+        "https://*.vercel.app/admin/*"
+      ],
+      "js": [
+        "admin-bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Add to Lotus Pro",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "options_page": "options.html"
 }

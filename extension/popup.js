@@ -35,3 +35,12 @@ $("f").addEventListener("submit", async (e) => {
   if (r && r.ok) show(`${r.created ? "Added" : "Updated"}: ${r.product.name}, now ${r.product.quantity} in stock.`, "ok");
   else show((r && r.error) || "Failed.", "err");
 });
+
+$("tcgSend").addEventListener("click", async () => {
+  $("tcgSend").disabled = true; $("tcgMsg").className = "muted";
+  $("tcgMsg").textContent = "Reading your TCGplayer inventory (read-only)…";
+  const r = await chrome.runtime.sendMessage({ type: "lotus:tcg-send" });
+  $("tcgSend").disabled = false;
+  if (r && r.ok) { $("tcgMsg").className = "ok"; $("tcgMsg").textContent = `Sent ${r.sealedRows} sealed rows to the store (${new Date(r.capturedAt).toLocaleString()}).`; }
+  else { $("tcgMsg").className = "err"; $("tcgMsg").textContent = (r && r.error) || "Failed."; }
+});

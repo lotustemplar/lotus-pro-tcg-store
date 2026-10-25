@@ -248,3 +248,14 @@ model SyncIssue {
 
   @@unique([source, externalId, detail])
 }
+
+// Latest TCGplayer sealed inventory snapshot pushed by the "Add to Lotus Pro" extension (read from Filipe's own Seller Portal session).
+model TcgplayerSnapshot {
+  id         String   @id @default(cuid())
+  capturedAt DateTime @default(now())
+  source     String   @default("extension") // extension | upload
+  rowCount   Int
+  rowsJson   String   // JSON: TcgItem[] (Unopened rows only)
+
+  @@index([capturedAt])
+}
