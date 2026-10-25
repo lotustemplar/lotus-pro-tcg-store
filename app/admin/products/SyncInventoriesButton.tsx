@@ -31,12 +31,17 @@ export function SyncInventoriesButton() {
         if (e.data.type === "lotus:tcg-ack") { acked = true; return; }
         if (e.data.type === "lotus:tcg-result") {
           window.removeEventListener("message", onMsg);
-          resolve(e.data.ok ? null : `Extension couldn't refresh TCGplayer data: ${e.data.error}. Using the last snapshot (or upload the export).`);
+          resolve(e.data.ok ? `TCGplayer refreshed: ${e.data.sealedRows} sealed rows.` : `Extension couldn't refresh TCGplayer data: ${e.data.error}. Using the last snapshot (or upload the export).`);
         }
       };
       window.addEventListener("message", onMsg);
       window.postMessage({ type: "lotus:tcg-request", id }, window.location.origin);
-      setTimeout(() => { if (!acked) { window.removeEventListener("message", onMsg); resolve(null); } }, 1500);
+      setTimeout(() => {
+        if (!acked) {
+          window.removeEventListener("message", onMsg);
+          resolve("Add to Lotus Pro extension (v1.1+) not detected on this page, so TCGplayer wasn't refreshed. Install/reload the extension, reload this page, and try again (or upload the export).");
+        }
+      }, 2500);
       setTimeout(() => { window.removeEventListener("message", onMsg); resolve("TCGplayer refresh timed out; using the last snapshot."); }, 180000);
     });
   }
