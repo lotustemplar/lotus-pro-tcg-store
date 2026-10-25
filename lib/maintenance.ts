@@ -46,6 +46,8 @@ export function isMaintenanceExempt(pathname: string): boolean {
   if (pathname.startsWith("/api/webhooks/")) return true;
   if (pathname.startsWith("/_next/")) return true;
   if (pathname.startsWith("/branding/") || pathname.startsWith("/logo/")) return true;
+  // De-inlined storefront images (read-only, public brand art).
+  if (pathname.startsWith("/media/site/")) return true;
   if (pathname === "/robots.txt" || pathname === "/social-preview.png" || pathname === "/favicon.ico") return true;
   // IndexNow key file and similar root-level static text files.
   if (/^\/[a-f0-9]{32}\.txt$/.test(pathname)) return true;

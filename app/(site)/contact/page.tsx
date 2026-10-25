@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { ContactForm } from "@/components/ContactForm";
 import { buildSocialMetadata } from "@/lib/metadata";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getStorefrontSiteSettings } from "@/lib/site-settings";
 import { STORE_CONFIG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
 export const revalidate = STORE_CONFIG_REVALIDATE_SECONDS;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSiteSettings();
+  const settings = await getStorefrontSiteSettings();
   const title = "Contact Us";
   const description =
     "Reach out to Lotus Pro TCG for product questions, order help, or general support. We reply from our official store email.";
@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ContactPage() {
-  const settings = await getSiteSettings();
+  const settings = await getStorefrontSiteSettings();
 
   return (
     <div className="space-y-8">

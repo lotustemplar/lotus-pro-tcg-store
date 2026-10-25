@@ -7,7 +7,7 @@ import { CartDrawer } from "@/components/CartDrawer";
 import { StickyPromoBar } from "@/components/StickyPromoBar";
 import { TawkToWidget } from "@/components/TawkToWidget";
 import { getNavCategories } from "@/lib/nav";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getStorefrontSiteSettings } from "@/lib/site-settings";
 import { buildSocialMetadata } from "@/lib/metadata";
 import { STORE_CONFIG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
@@ -15,7 +15,7 @@ export const revalidate = STORE_CONFIG_REVALIDATE_SECONDS;
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSiteSettings();
+  const settings = await getStorefrontSiteSettings();
   const title = settings.siteMetaTitle;
   const description = settings.siteMetaDescription;
 
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [categories, settings] = await Promise.all([getNavCategories(), getSiteSettings()]);
+  const [categories, settings] = await Promise.all([getNavCategories(), getStorefrontSiteSettings()]);
 
   return (
     <html lang="en">

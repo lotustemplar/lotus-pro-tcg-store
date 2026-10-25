@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Carousel } from "@/components/Carousel";
 import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
@@ -12,7 +13,7 @@ import {
   toCardProps,
 } from "@/lib/products";
 import { isExclusiveSaleFeaturedOrder } from "@/lib/featured-home";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getStorefrontSiteSettings } from "@/lib/site-settings";
 import { STORE_CATALOG_REVALIDATE_SECONDS } from "@/lib/storefront-cache";
 
 export const revalidate = STORE_CATALOG_REVALIDATE_SECONDS;
@@ -20,24 +21,20 @@ export const dynamic = "force-dynamic";
 
 const FEATURE_STRIP = [
   {
-    title: "AUTHENTIC PRODUCTS",
+    title: "Authentic Products",
     description: "100% authenticity guaranteed",
-    icon: "⭐",
   },
   {
-    title: "CAREFULLY PACKED",
+    title: "Carefully Packed",
     description: "Secure and collector grade shipping",
-    icon: "📦",
   },
   {
-    title: "FAST SHIPPING",
+    title: "Fast Shipping",
     description: "Quick dispatch on all orders",
-    icon: "✈️",
   },
   {
-    title: "COLLECTOR FIRST",
+    title: "Collector First",
     description: "Community focused, collector driven",
-    icon: "🏆",
   },
 ];
 
@@ -179,7 +176,7 @@ function FeedbackTestimonialsSection() {
       <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(246,248,253,0.97)_55%,rgba(234,240,251,0.97))] shadow-[0_34px_80px_rgba(2,6,23,0.45)]">
         <div className="px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:px-10 lg:pt-10">
           <div className="text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
               Feedback & Testimonials
             </p>
             <div className="mt-4 flex items-center justify-center gap-3 sm:gap-5">
@@ -189,7 +186,7 @@ function FeedbackTestimonialsSection() {
                   <FeedbackIcon key={index} kind="star" className="h-5 w-5 sm:h-6 sm:w-6" />
                 ))}
               </div>
-              <h2 className="font-display text-[2rem] font-semibold tracking-[-0.05em] text-slate-950 sm:text-[3.4rem] lg:text-[5.2rem]">
+              <h2 className="font-display text-[2rem] font-semibold tracking-[-0.03em] text-slate-950 sm:text-[2.6rem] lg:text-[3.2rem]">
                 Trusted Feedback
               </h2>
               <div className="hidden items-center gap-3 text-amber-400 md:flex">
@@ -296,10 +293,12 @@ function CategoryCard({
     >
       <div className="absolute inset-0">
         {image ? (
-          <img
+          <Image
             src={image}
             alt={category.name}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            fill
+            sizes={compact ? "50vw" : "(min-width: 1024px) 20vw, 50vw"}
+            className="object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="h-full w-full bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.38),rgba(9,13,22,1)_70%)]" />
@@ -342,7 +341,7 @@ function CategoryCard({
 export default async function HomePage() {
   const [featured, settings, categoryPreviews] = await Promise.all([
     getFeaturedProducts(),
-    getSiteSettings(),
+    getStorefrontSiteSettings(),
     getHomeCategoryPreviews(5),
   ]);
   const inStockFeaturedProducts = featured.filter((product) => product.quantity > 0);
@@ -354,7 +353,7 @@ export default async function HomePage() {
   const rotatingHeroProducts = regularFeaturedProducts;
 
   const carouselProducts = regularFeaturedProducts.map(toCardProps);
-  const mobileCategoryPreviews = categoryPreviews.slice(0, 4);
+  const mobileCategoryPreviews = categoryPreviews;
 
   return (
     <div className="space-y-0">
@@ -373,13 +372,13 @@ export default async function HomePage() {
               <div className="hot-products-card w-full max-w-[420px] rounded-[28px] border border-red-300/45 bg-[linear-gradient(180deg,rgba(20,9,8,0.78),rgba(7,10,18,0.96))] p-4 backdrop-blur-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-100 drop-shadow-[0_0_10px_rgba(251,146,60,0.42)]">
-                      HOT PRODCUTS!
+                    <p className="text-sm font-bold uppercase tracking-[0.14em] text-orange-100">
+                      Hot Products
                     </p>
                   </div>
                   <Link
                     href="#featured-right-now"
-                    className="rounded-full border border-red-200/35 bg-black/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-50 transition hover:border-orange-200/60 hover:text-white"
+                    className="rounded-full border border-red-200/35 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-orange-50 transition hover:border-orange-200/60 hover:text-white"
                   >
                     View All
                   </Link>
@@ -409,16 +408,14 @@ export default async function HomePage() {
           {FEATURE_STRIP.map((item) => (
             <div
               key={item.title}
-              className="flex min-h-[92px] items-start gap-3 bg-[#0a0e17] px-3 py-3 sm:min-h-[104px] sm:px-4 sm:py-4"
+              className="flex items-start gap-3 bg-[#0a0e17] px-4 py-4 sm:px-5 sm:py-5"
             >
-              <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full border border-brand-400/35 bg-brand-500/10 text-base sm:h-9 sm:w-9 sm:text-lg">
-                {item.icon}
-              </div>
+              <span aria-hidden="true" className="mt-1.5 h-2 w-2 flex-none rounded-full bg-brand-400" />
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-white sm:text-[10px] sm:tracking-[0.14em]">
+                <p className="text-sm font-semibold text-white sm:text-base">
                   {item.title}
                 </p>
-                <p className="mt-1 text-[11px] leading-4 text-gray-400 sm:text-xs sm:leading-5">
+                <p className="mt-1 text-sm leading-5 text-gray-300">
                   {item.description}
                 </p>
               </div>
@@ -475,7 +472,7 @@ export default async function HomePage() {
           </>
         ) : (
           <div className="rounded-2xl border border-dashed border-white/12 bg-white/[0.02] px-5 py-8 text-center text-gray-400">
-            Your featured carousel is currently empty because the only featured product is pinned in the exclusive hero slot.
+            New sealed product is on the way. Check back soon.
           </div>
         )}
       </section>
