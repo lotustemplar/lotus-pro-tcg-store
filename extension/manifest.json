@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Add to Lotus Pro",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Add TCGplayer sealed products to the Lotus Pro TCG store, and send your TCGplayer sealed inventory (read-only) to the store for Sync Inventories.",
   "permissions": [
     "storage",
