@@ -3,7 +3,7 @@
 // Matching mirrors the 2026-10-24 seed (seed_build.py):
 //   Mana Pool  -> store: manapoolProductId, else Mana Pool tcgplayer_id == store sourceProductId
 //   TCGplayer  -> store: TCGplayer Id (SKU) == store tcgplayerSku, else Mana Pool's tcgplayer_sku, else exact name
-//   both agree -> that qty; only one has it -> that qty; they disagree -> FLAG (no proposal, Filipe decides)
+//   missing or 0 on one marketplace -> use the other's count; FLAG only when both are positive and differ
 import { parseCsv } from "./reconcile";
 
 export type StoreItem = { id: string; name: string; sourceSetName: string | null; quantity: number; isActive: boolean; sourceProductId: number | null; manapoolProductId: string | null; tcgplayerSku: number | null };
@@ -54,7 +54,10 @@ export function buildInventoryReview(store: StoreItem[], mp: MpItem[] | null, tc
     let tq: number | null = t ? t.quantity : null;
     const base = { productId: p.id, name: p.sourceSetName && !p.name.includes(p.sourceSetName) ? `${p.sourceSetName} — ${p.name}` : p.name, storeQty: p.quantity, manapoolQty: mq, tcgplayerQty: tq, manapoolProductId: m?.productId ?? p.manapoolProductId, tcgplayerSku: t?.sku ?? p.tcgplayerSku };
     let proposed: number | null; let note: string;
-    if (mq !== null && tq !== null) { if (mq === tq) { proposed = mq; note = "Mana Pool and TCGplayer agree"; } else { proposed = null; note = `Mana Pool ${mq} vs TCGplayer ${tq}: pick one`; } }
+    // Filipe's rule: many sealed items are listed on only one marketplace on purpose.
+    // Missing OR 0 on one channel -> use the other channel's count. Flag only when both are positive and differ.
+    if (mq !== null && tq !== null && mq > 0 && tq > 0) { if (mq === tq) { proposed = mq; note = "Mana Pool and TCGplayer agree"; } else { proposed = null; note = `Mana Pool ${mq} vs TCGplayer ${tq}: pick one`; } }
+    else if (mq !== null && tq !== null) { proposed = Math.max(mq, tq); note = mq === tq ? "0 on both marketplaces" : mq > tq ? "Mana Pool (0 on TCGplayer)" : "TCGplayer (0 on Mana Pool)"; }
     else if (mq !== null) { proposed = mq; note = tcg ? "Mana Pool only (not on TCGplayer)" : "Mana Pool (no TCGplayer export loaded)"; }
     else if (tq !== null) { proposed = tq; note = "TCGplayer only"; }
     else { rows.push({ ...base, proposedQty: null, change: null, status: "no listing", note: "Not listed on Mana Pool or TCGplayer; store count unverified" }); continue; }

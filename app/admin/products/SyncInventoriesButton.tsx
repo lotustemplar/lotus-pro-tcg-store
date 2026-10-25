@@ -67,6 +67,9 @@ export function SyncInventoriesButton() {
               Mana Pool and TCGplayer hold the real counts. This only changes store quantities and never writes to a marketplace.
               Mana Pool is read live. TCGplayer has no seller API, so upload the export from Seller Portal → Pricing → Export (the &quot;MyPricing&quot; CSV); sealed rows (Unopened) are used.
             </p>
+            <p className="mb-3 text-xs text-gray-400">
+              Rule: if a product is missing or at 0 on one marketplace, the other marketplace&apos;s count is used (single-channel listings are normal). ⚠ Flagged only when both marketplaces show different positive counts.
+            </p>
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <label className="text-gray-300">TCGplayer export CSV:{" "}
                 <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-xs" />
