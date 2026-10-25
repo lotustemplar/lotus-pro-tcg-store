@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <h1>Add to Lotus Pro</h1>
+  <div id="msg" class="muted">Reading page…</div>
+  <form id="f" hidden>
+    <img id="img" alt="">
+    <label>Name<input id="name" required></label>
+    <div class="row"><label>Set<input id="set"></label><label>Type<input id="type"></label></div>
+    <div class="muted" id="meta"></div>
+    <div class="row"><label>Quantity<input id="qty" type="number" min="0" value="1" required></label><label>Price $<input id="price" type="number" min="0.01" step="0.01" required></label></div>
+    <label class="inline"><input type="radio" name="mode" value="add" checked> Add to stock</label>
+    <label class="inline"><input type="radio" name="mode" value="set"> Set stock to</label>
+    <button type="submit">Add to store</button>
+  </form>
+  <p class="foot"><a href="options.html" target="_blank">Settings</a></p>
+  <script src="popup.js"></script>
+</body></html>

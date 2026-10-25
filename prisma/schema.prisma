@@ -53,6 +53,12 @@ model Product {
   compareAtCents    Int?
   sku               String?        @unique
   quantity          Int            @default(0)
+  tcgplayerSku      Int?           @unique
+  tcgplayerListingName String?
+  manapoolProductId String?        @unique
+  inventoryEvents   InventoryEvent[]
+  channelChanges    ChannelChange[]
+  visitorActivity   VisitorActivity[]
   images            ProductImage[]
   categoryId        String
   category          Category       @relation(fields: [categoryId], references: [id])
@@ -256,4 +262,72 @@ model MysteryBagAssignment {
   marketValueCents  Int
 
   @@index([inventoryId])
+}
+
+
+// Storefront visitor actions (cart adds, checkout started). Never card data. Not orders.
+model VisitorActivity {
+  id          String   @id @default(cuid())
+  sessionId   String
+  action      String   // add_to_cart | remove_from_cart | checkout_started | legacy_pending_order
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  quantity    Int      @default(1)
+  priceCents  Int?
+  path        String?
+  meta        String?  // small JSON (e.g. legacy order id, stripe session id)
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([sessionId])
+}
+
+// One sale seen on one channel. Unique per (source, externalOrderId, productId) so replays are no-ops.
+model InventoryEvent {
+  id              String   @id @default(cuid())
+  source          String   // store | manapool | tcgplayer
+  externalOrderId String
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  quantity        Int
+  createdAt       DateTime @default(now())
+  changes         ChannelChange[]
+
+  @@unique([source, externalOrderId, productId])
+}
+
+// A queued quantity change for another channel.
+model ChannelChange {
+  id          String    @id @default(cuid())
+  channel     String    // store | manapool | tcgplayer
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  delta       Int       // negative = remove
+  status      String    @default("pending") // pending | approved | applied | exported | rejected | failed | unmatched
+  eventId     String?
+  event       InventoryEvent? @relation(fields: [eventId], references: [id])
+  note        String?
+  error       String?
+  createdAt   DateTime  @default(now())
+  appliedAt   DateTime?
+
+  @@index([channel, status])
+}
+
+model SyncSettings {
+  id            String   @id @default("sync")
+  manapoolMode  String   @default("approval") // approval | auto
+  updatedAt     DateTime @updatedAt
+}
+
+// Unmatched sale lines (e.g. TCGplayer email names with no product match).
+model SyncIssue {
+  id         String   @id @default(cuid())
+  source     String
+  externalId String
+  detail     String
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([source, externalId, detail])
 }

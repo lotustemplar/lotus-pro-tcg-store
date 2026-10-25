@@ -1,0 +1,22 @@
+name: Sealed reconcile (change list only)
+
+on:
+  schedule:
+    - cron: "0 7,19 * * *" # 00:00 and 12:00 PT (PDT)
+  workflow_dispatch:
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      MANAPOOL_EMAIL: ${{ secrets.MANAPOOL_EMAIL }}
+      MANAPOOL_ACCESS_TOKEN: ${{ secrets.MANAPOOL_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npx tsx scripts/sealed-reconcile.ts --out reconcile-out
+      - uses: actions/upload-artifact@v4
+        with: { name: sealed-change-list, path: reconcile-out/ }
