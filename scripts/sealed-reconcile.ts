@@ -1,4 +1,4 @@
-// 12-hour sealed reconcile: plain script, no model, no writes. Produces a change list for approval.
+// 12-hour sealed reconcile: plain script, no model, no writes. Marketplaces are the source of truth; produces a STORE change list for approval.
 // Usage: tsx scripts/sealed-reconcile.ts [--tcg-export path/to/TCGplayer__MyPricing.csv] [--out dir]
 import { readFileSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
@@ -21,7 +21,7 @@ async function main() {
   const outDir = arg("--out") ?? "reconcile-out";
   mkdirSync(outDir, { recursive: true });
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
-  const csv = ["product_id,name,channel,store_qty,channel_qty,proposed_action", ...rows.map((r) => [r.productId, `"${r.name.replace(/"/g, '""')}"`, r.channel, r.storeQty, r.channelQty ?? "", `"${r.action}"`].join(","))].join("\n") + "\n";
+  const csv = ["product_id,name,store_qty,manapool_qty,tcgplayer_qty,proposed_store_qty,action", ...rows.map((r) => [r.productId, `"${r.name.replace(/"/g, '""')}"`, r.storeQty, r.manapoolQty ?? "", r.tcgplayerQty ?? "", r.proposedStoreQty ?? "", `"${r.action}"`].join(","))].join("\n") + "\n";
   writeFileSync(join(outDir, `sealed-change-list-${stamp}.csv`), csv);
   console.log(JSON.stringify({ products: store.length, manapoolChecked: !!mp, tcgplayerChecked: !!tcg, changes: rows.length }, null, 2));
   console.log("Change list only. Nothing was changed on any platform.");

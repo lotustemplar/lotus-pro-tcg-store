@@ -1,19 +1,22 @@
 // Pure diff logic for the 12-hour sealed reconcile. No writes anywhere.
 export type StoreRow = { id: string; name: string; quantity: number; manapoolProductId: string | null; tcgplayerSku: number | null };
 export type ChannelQty = Map<string, number>; // key -> qty
-export type ChangeRow = { productId: string; name: string; channel: "manapool" | "tcgplayer"; storeQty: number; channelQty: number | null; action: string };
+// Marketplaces (Mana Pool, TCGplayer) are the source of truth for sealed counts.
+// The reconcile only ever proposes STORE changes; it never proposes marketplace writes.
+export type ChangeRow = { productId: string; name: string; storeQty: number; manapoolQty: number | null; tcgplayerQty: number | null; proposedStoreQty: number | null; action: string };
 
 export function diffSealed(store: StoreRow[], mp: ChannelQty | null, tcg: ChannelQty | null): ChangeRow[] {
   const out: ChangeRow[] = [];
   for (const p of store) {
-    if (mp && p.manapoolProductId) {
-      const q = mp.get(p.manapoolProductId) ?? 0;
-      if (q !== p.quantity) out.push({ productId: p.id, name: p.name, channel: "manapool", storeQty: p.quantity, channelQty: q, action: `set Mana Pool qty ${q} -> ${p.quantity}` });
+    const m = mp && p.manapoolProductId ? mp.get(p.manapoolProductId) ?? 0 : null;
+    const t = tcg && p.tcgplayerSku ? tcg.get(String(p.tcgplayerSku)) ?? 0 : null;
+    if (m === null && t === null) continue;
+    if (m !== null && t !== null && m !== t) {
+      out.push({ productId: p.id, name: p.name, storeQty: p.quantity, manapoolQty: m, tcgplayerQty: t, proposedStoreQty: null, action: `FLAG: Mana Pool ${m} vs TCGplayer ${t}; decide manually` });
+      continue;
     }
-    if (tcg && p.tcgplayerSku) {
-      const q = tcg.get(String(p.tcgplayerSku)) ?? 0;
-      if (q !== p.quantity) out.push({ productId: p.id, name: p.name, channel: "tcgplayer", storeQty: p.quantity, channelQty: q, action: `Add to Quantity ${p.quantity - q}` });
-    }
+    const truth = (m ?? t) as number;
+    if (truth !== p.quantity) out.push({ productId: p.id, name: p.name, storeQty: p.quantity, manapoolQty: m, tcgplayerQty: t, proposedStoreQty: truth, action: `set store qty ${p.quantity} -> ${truth}` });
   }
   return out;
 }

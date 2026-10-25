@@ -1,5 +1,12 @@
 # Sealed inventory sync (event-driven, no AI)
 
+## Source of truth (updated Oct 24, 2026, per Filipe)
+- **Mana Pool and TCGplayer hold the real, current sealed counts. The website's stock is stale.**
+- Setup never pushes store quantities to Mana Pool or TCGplayer, and never builds TCGplayer CSV decrements or Mana Pool changes from store counts.
+- One-time seed: store sealed quantities and product list come FROM the marketplaces (Mana Pool API, read-only, for MTG sealed; latest TCGplayer pricing export for everything else). Where the two disagree, the row is flagged, not picked. The seed is a reviewable change list (`/workspace/lotustcgpro/seed-changes.csv`) and is not applied until Filipe approves.
+- The 12-hour reconcile only proposes STORE changes (marketplace qty -> store), with disagreements flagged. It never proposes marketplace writes.
+- After launch, ongoing sync stays sale-event based: a sale on one channel decrements the others (Mana Pool via approval queue, TCGplayer via staged CSV delta).
+
 All three channels list the **full** sealed quantity. A sale on one lowers the store DB and queues the same
 decrement for the others. Nothing polls TCGplayer or Mana Pool on a short timer.
 

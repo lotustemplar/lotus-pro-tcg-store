@@ -68,5 +68,9 @@ test("reconcile diff", () => {
   const tcg = tcgExportQuantities("TCGplayer Id,Condition,Total Quantity\n11,Unopened,5\n12,Near Mint,1\n");
   const rows = diffSealed(store, new Map([["mp1", 3]]), tcg);
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].action, "Add to Quantity -2");
+  assert.equal(rows[0].proposedStoreQty, null); // MP 3 vs TCG 5 -> flagged, not picked
+  const agree = diffSealed(store, new Map([["mp1", 5]]), tcg);
+  assert.equal(agree[0].proposedStoreQty, 5);
+  assert.equal(agree[0].action, "set store qty 3 -> 5");
+  assert.equal(diffSealed(store, new Map([["mp1", 3]]), null).length, 0);
 });
