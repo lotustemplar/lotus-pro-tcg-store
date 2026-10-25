@@ -244,7 +244,7 @@ export async function getHomeCategoryPreviews(limit = 5): Promise<HomeCategoryPr
     }
   })();
 
-  return categories.map((category) => {
+  return categories.filter((category) => !/single|commander|\bdecks?\b|mystery/i.test(category.name)).map((category) => {
     const directImage = category.products[0]?.images[0]?.url ?? null;
     const childWithImage = category.children.find((child) => child.products[0]?.images[0]?.url);
     const image = directImage ?? childWithImage?.products[0]?.images[0]?.url ?? null;

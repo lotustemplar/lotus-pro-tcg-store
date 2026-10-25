@@ -14,7 +14,7 @@ const LEGACY_FREE_SHIPPING_COPY = {
 } as const;
 const CURRENT_FREE_SHIPPING_COPY = {
   heroDescription:
-    "Sealed cases, booster boxes, booster packs, pro-built Commander decks, and more - shipped fast with a flat $5.99 rate, free over $75.",
+    "Sealed cases, booster boxes and booster packs - shipped fast with a flat $5.99 rate, free over $75.",
   footerShippingLineHighlight: "Free shipping on orders over $75.",
   footerBottomPromoRight: "Free shipping over $75",
 } as const;
@@ -94,7 +94,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   logoSquareUrl: "/logo/logo-square.svg",
   heroBannerUrl: null,
   heroSlides: [],
-  heroEyebrow: "Expert-Built - Limited Runs - Every Major TCG",
+  heroEyebrow: "Sealed Product - Every Major TCG",
   heroTitle: "Your Store for MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz",
   heroDescription: CURRENT_FREE_SHIPPING_COPY.heroDescription,
   heroPrimaryLabel: "Shop Magic",
@@ -105,9 +105,9 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   featuredSectionTitle: "Featured Right Now",
   siteMetaTitle: "Lotus Pro TCG | MTG, Pokemon, One Piece, Riftbound & Weiss Schwarz",
   siteMetaDescription:
-    "Sealed product, singles, and pro-built decks for Magic the Gathering, Pokemon, One Piece, Riftbound, and Weiss Schwarz.",
+    "Sealed booster boxes, cases and packs for Magic: The Gathering, Pokemon, One Piece, Riftbound, and Weiss Schwarz.",
   footerDescription:
-    "Sealed product, singles, and pro-built decks for Magic, Pokemon, One Piece, Riftbound, and Weiss Schwarz.",
+    "Sealed booster boxes, cases and packs for Magic, Pokemon, One Piece, Riftbound, and Weiss Schwarz.",
   footerShopHeading: "Shop",
   footerSupportHeading: "Support",
   footerShippingHeading: "Shipping",
@@ -400,4 +400,65 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   const settings = await withStorefrontDbFallback("site-settings", null, () => getCachedSiteSettingsRecord());
 
   return mergeSiteSettings(settings);
+}
+
+/* ------------------------------------------------------------------ */
+/* Storefront image de-inlining                                        */
+/* Admin uploads are stored as base64 data URIs in SiteSettings. Inlining
+ * them made the homepage HTML ~14 MB. The storefront now swaps each data
+ * URI for a cacheable URL served by app/media/site/[kind]/[key]/route.ts.
+ * The stored data is untouched, so the admin form keeps working as-is. */
+/* ------------------------------------------------------------------ */
+
+export type SiteMediaKind = "hero" | "category" | "logo";
+
+function shortHash(value: string) {
+  // FNV-1a over a sample of the string; enough for cache busting.
+  let hash = 0x811c9dc5;
+  const step = Math.max(1, Math.floor(value.length / 4096));
+  for (let i = 0; i < value.length; i += step) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `${(hash >>> 0).toString(36)}${value.length.toString(36)}`;
+}
+
+export function siteMediaUrl(kind: SiteMediaKind, key: string, value: string | null) {
+  if (!value || !value.startsWith("data:")) return value;
+  return `/media/site/${kind}/${encodeURIComponent(key)}?v=${shortHash(value)}`;
+}
+
+export function externalizeSiteMedia(settings: SiteSettings): SiteSettings {
+  return {
+    ...settings,
+    logoWideUrl: siteMediaUrl("logo", "wide", settings.logoWideUrl) ?? settings.logoWideUrl,
+    logoSquareUrl: siteMediaUrl("logo", "square", settings.logoSquareUrl) ?? settings.logoSquareUrl,
+    heroBannerUrl: siteMediaUrl("logo", "banner", settings.heroBannerUrl),
+    heroSlides: settings.heroSlides.map((slide) => ({
+      ...slide,
+      imageUrl: siteMediaUrl("hero", slide.id, slide.imageUrl),
+    })),
+    categoryBackgrounds: Object.fromEntries(
+      Object.entries(settings.categoryBackgrounds).map(([slug, value]) => [
+        slug,
+        siteMediaUrl("category", slug, value),
+      ]),
+    ),
+  };
+}
+
+/** Raw (data URI) value for a media key; used only by the media route. */
+export async function getSiteMediaValue(kind: SiteMediaKind, key: string): Promise<string | null> {
+  const settings = await getSiteSettings();
+  if (kind === "hero") return settings.heroSlides.find((s) => s.id === key)?.imageUrl ?? null;
+  if (kind === "category") return settings.categoryBackgrounds[key] ?? null;
+  if (key === "wide") return settings.logoWideUrl;
+  if (key === "square") return settings.logoSquareUrl;
+  if (key === "banner") return settings.heroBannerUrl;
+  return null;
+}
+
+/** Site settings for public pages: same data, images as URLs instead of base64. */
+export async function getStorefrontSiteSettings(): Promise<SiteSettings> {
+  return externalizeSiteMedia(await getSiteSettings());
 }
