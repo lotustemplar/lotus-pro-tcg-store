@@ -26,7 +26,7 @@ const productSchema = z.object({
   sourceProductType: z.string().nullable().optional(),
   sourcePriceCents: z.number().int().min(0).nullable().optional(),
   sourceImageUrl: z.string().nullable().optional(),
-  autoUpdatePrice: z.boolean().default(false),
+  autoUpdatePrice: z.boolean().default(true),
   compareAtCents: z.number().int().min(0).nullable().optional(),
   sku: z.string().nullable().optional(),
   quantity: z.number().int().min(0),

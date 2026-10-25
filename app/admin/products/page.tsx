@@ -140,6 +140,7 @@ export default async function AdminProductsPage({
           name: getDisplayProductName(product.name, product.sourceSetName),
           priceCents: product.priceCents,
           sourceMarketplace: product.sourceMarketplace,
+          sourceProductId: product.sourceProductId,
           sourceSetName: product.sourceSetName,
           sourceProductType: product.sourceProductType,
           sourcePriceCents: product.sourcePriceCents,

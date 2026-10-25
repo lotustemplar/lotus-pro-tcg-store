@@ -47,7 +47,8 @@ model Product {
   sourceProductType String?
   sourcePriceCents  Int?
   sourceImageUrl    String?
-  autoUpdatePrice   Boolean        @default(false)
+  autoUpdatePrice   Boolean        @default(true)
+  tcgplayerGroupId  Int?
   lastSyncedAt      DateTime?
   lastSyncError     String?
   compareAtCents    Int?

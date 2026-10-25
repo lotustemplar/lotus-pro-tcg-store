@@ -23,6 +23,7 @@ type AdminProduct = {
   priceCents: number;
   imageUrl: string | null;
   sourceMarketplace: string | null;
+  sourceProductId?: number | null;
   sourceSetName: string | null;
   sourceProductType: string | null;
   sourcePriceCents: number | null;
@@ -1244,7 +1245,7 @@ export function ProductsManager({
                     const currentTopLevelId = topLevelForProduct(product);
                     const dirty = dirtyIdSet.has(product.id);
                     const saving = savingIdSet.has(product.id);
-                    const isTracked = product.sourceMarketplace === "tcgplayer";
+                    const isTracked = product.sourceProductId != null || product.sourceMarketplace === "tcgplayer";
                     const isExclusiveSale = isExclusiveSaleFeaturedOrder(product.featuredOrder);
 
                     return (
@@ -1361,13 +1362,13 @@ export function ProductsManager({
                               }
                               className="h-4 w-4 disabled:opacity-50"
                             />
-                            {isTracked ? "Live" : "N/A"}
+                            {isTracked ? (product.autoUpdatePrice ? "On" : "Off") : "N/A"}
                           </label>
                           <p className="mt-2 text-xs text-gray-500">
                             {isTracked
                               ? product.autoUpdatePrice
-                                ? "Reprices every 12 hours"
-                                : "Manual price lock"
+                                ? "Auto price ON (daily, market −5% → .97)"
+                                : "Auto price OFF (manual price)"
                               : "No TCGplayer source"}
                           </p>
                         </td>
