@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidateCatalogCache } from "@/lib/storefront-cache";
+import { checkBearer } from "@/lib/sync/signature";
+import { parseSinceParam, saleOrdersWhere, toTriageSaleFeed } from "@/lib/admin-triage";
 
 const createOrderSchema = z.object({
   email: z.string().trim().email(),
@@ -145,4 +147,31 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+
+// Bearer auth for Lotus Inventory Triage. POST above stays on the admin session cookie.
+export async function GET(req: NextRequest) {
+  if (!checkBearer(req.headers.get("authorization"), process.env.EXTENSION_API_TOKEN)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const since = parseSinceParam(req.nextUrl.searchParams.get("since"));
+  if ("error" in since) {
+    return NextResponse.json({ error: since.error }, { status: 400 });
+  }
+
+  const orders = await prisma.order.findMany({
+    where: saleOrdersWhere(since.date),
+    orderBy: { createdAt: "asc" },
+    include: {
+      items: {
+        orderBy: { id: "asc" },
+        include: {
+          product: { select: { sourceProductId: true } },
+        },
+      },
+    },
+  });
+
+  return NextResponse.json(toTriageSaleFeed(orders));
 }

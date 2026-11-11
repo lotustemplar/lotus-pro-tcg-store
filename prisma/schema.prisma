@@ -249,6 +249,16 @@ model SyncIssue {
   @@unique([source, externalId, detail])
 }
 
+// Replay record for POST /api/admin/inventory/quantity. The caller's idempotencyKey is the primary key.
+// Additive: no foreign key, so applying the migration does not rewrite Product or Order.
+model QuantitySetIdempotency {
+  key        String   @id
+  productId  String
+  beforeQty  Int
+  afterQty   Int
+  createdAt  DateTime @default(now())
+}
+
 // Latest TCGplayer sealed inventory snapshot pushed by the "Add to Lotus Pro" extension (read from Filipe's own Seller Portal session).
 model TcgplayerSnapshot {
   id         String   @id @default(cuid())
